@@ -22,21 +22,5 @@ Next.js 15 (App Router) · React 19 · libsql(SQLite) · Leaflet · 익명 쿠�
 
 ```bash
 npm install
-cp .env.example .env   # 키 입력
-npm run dev            # http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
-
-### 환경변수 (`.env`)
-
-| 키 | 용도 | 없으면 |
-|---|---|---|
-| `GEMINI_API_KEY` | 장소 추출 | 데모 추출로 폴백 |
-| `GEMINI_MODEL` | 기본 `gemini-flash-lite-latest` | |
-| `KAKAO_REST_KEY` | 지오코딩(주소·좌표) | Nominatim 폴백(부정확) |
-| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | 프로덕션 영속 DB | 로컬은 파일, Vercel은 임시 |
-
-## 참고
-
-- `prototype/places.html` — 단일 HTML 설계 프로토타입 (기능·UX 검증용)
-- `docs/` — 디자인 토큰 및 설계 문서
-- 네이버 사진은 비공식 스크래핑 기반 — 상업 런칭 전 Google Places 등으로 교체 권장
