@@ -112,6 +112,14 @@ private struct WebView: UIViewRepresentable {
                 webView?.goBack()
             }
         }
+        // 공유 익스텐션이 백그라운드로 장소를 저장한 뒤 앱이 포그라운드로 오면 목록을 새로고침
+        context.coordinator.reloadObserver = NotificationCenter.default.addObserver(
+            forName: .placeMoaReload,
+            object: nil,
+            queue: .main
+        ) { [weak webView] _ in
+            webView?.reload()
+        }
 
         return webView
     }
@@ -148,17 +156,25 @@ private struct WebView: UIViewRepresentable {
         let host = url.host ?? "place-moaa.vercel.app"
 
         store.getAllCookies { cookies in
-            if let existing = cookies.first(where: { $0.name == "moa_uid" && !$0.value.isEmpty }) {
-                group?.set(existing.value, forKey: "moaUid")
+            let cookieUid = cookies.first(where: { $0.name == "moa_uid" && !$0.value.isEmpty })?.value
+
+            // App Group의 uid가 유일한 기준. 익스텐션이 저장한 계정과 반드시 일치해야 하므로
+            // App Group에 값이 있으면 그걸 채택하고(절대 덮어쓰지 않음), 없을 때만
+            // 기존 웹 쿠키(있으면 기존 데이터 보존) 또는 새 uid로 초기화한다.
+            let uid: String
+            if let existing = group?.string(forKey: "moaUid"), !existing.isEmpty {
+                uid = existing
+            } else {
+                uid = cookieUid ?? UUID().uuidString
+                group?.set(uid, forKey: "moaUid")
                 group?.synchronize()
+            }
+
+            // 웹 쿠키를 항상 App Group uid로 강제(미들웨어가 다른 값을 심는 것 방지 + 익스텐션 저장분과 동일 계정 보장)
+            if cookieUid == uid {
                 completion()
                 return
             }
-
-            let uid = group?.string(forKey: "moaUid") ?? UUID().uuidString
-            group?.set(uid, forKey: "moaUid")
-            group?.synchronize()
-
             let props: [HTTPCookiePropertyKey: Any] = [
                 .domain: host,
                 .path: "/",
@@ -189,12 +205,16 @@ private struct WebView: UIViewRepresentable {
         if let observer = coordinator.goBackObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        if let observer = coordinator.reloadObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var parent: WebView
         weak var webView: WKWebView?
         var goBackObserver: NSObjectProtocol?
+        var reloadObserver: NSObjectProtocol?
         var lastReloadToken: UUID
         var lastSharedURL: URL?
 
@@ -317,6 +337,7 @@ private struct WebView: UIViewRepresentable {
     }
 }
 
-private extension Notification.Name {
+extension Notification.Name {
     static let placeMoaGoBack = Notification.Name("PlaceMoaGoBack")
+    static let placeMoaReload = Notification.Name("PlaceMoaReload")
 }

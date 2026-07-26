@@ -113,6 +113,7 @@ final class ShareViewController: UIViewController {
             }
 
             if status == 200, let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                self.markNeedsRefresh()
                 if json["saved"] != nil {
                     self.finish(message: "저장됐어요! ✅\n목록·지도에서 확인하세요", delay: 1.4)
                 } else if let pending = json["pending"] as? [String: Any],
@@ -149,6 +150,13 @@ final class ShareViewController: UIViewController {
         defaults.set(uid, forKey: "moaUid")
         defaults.synchronize()
         return uid
+    }
+
+    // 앱이 포그라운드로 올 때 목록을 새로고침하도록 플래그를 남긴다
+    private func markNeedsRefresh() {
+        guard let defaults = UserDefaults(suiteName: appGroup) else { return }
+        defaults.set(true, forKey: "pendingRefresh")
+        defaults.synchronize()
     }
 
     // 실패 시 재시도용으로 URL 보관 (앱이 열릴 때 /add 로 복구)

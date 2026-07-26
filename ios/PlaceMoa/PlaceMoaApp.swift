@@ -12,6 +12,7 @@ struct PlaceMoaApp: App {
             }
             .onAppear {
                 consumeQueuedShare()
+                refreshIfNeeded()
             }
             .onOpenURL { url in
                 sharedURL = AppConfig.sharedURL(from: url)
@@ -20,6 +21,7 @@ struct PlaceMoaApp: App {
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
                     consumeQueuedShare()
+                    refreshIfNeeded()
                 }
             }
         }
@@ -28,6 +30,16 @@ struct PlaceMoaApp: App {
     private func consumeQueuedShare() {
         guard let url = SharedShareInbox.popNextURL() else { return }
         sharedURL = url
+    }
+
+    // 공유 익스텐션이 백그라운드로 장소를 저장하면 플래그를 남긴다.
+    // 앱이 포그라운드로 오면 웹 목록을 새로고침해 방금 저장된 장소를 보이게 한다.
+    private func refreshIfNeeded() {
+        guard let defaults = UserDefaults(suiteName: "group.com.jihyun.placemoa"),
+              defaults.bool(forKey: "pendingRefresh") else { return }
+        defaults.set(false, forKey: "pendingRefresh")
+        defaults.synchronize()
+        NotificationCenter.default.post(name: .placeMoaReload, object: nil)
     }
 }
 
