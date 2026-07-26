@@ -112,16 +112,21 @@ private struct WebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        // 1) 공유 링크가 새로 들어오면 reloadToken과 무관하게 항상 /add 로 이동해 분석
+        if context.coordinator.lastSharedURL != sharedURL {
+            context.coordinator.lastSharedURL = sharedURL
+            context.coordinator.lastReloadToken = reloadToken
+            loadError = nil
+            if sharedURL != nil {
+                webView.load(URLRequest(url: resolvedURL()))
+                return
+            }
+        }
+
+        // 2) 새로고침/재시도 버튼(reloadToken 변경) 처리
         guard context.coordinator.lastReloadToken != reloadToken else { return }
         context.coordinator.lastReloadToken = reloadToken
         loadError = nil
-
-        if context.coordinator.lastSharedURL != sharedURL {
-            context.coordinator.lastSharedURL = sharedURL
-            loadError = nil
-            webView.load(URLRequest(url: resolvedURL()))
-            return
-        }
 
         if webView.url == nil {
             webView.load(URLRequest(url: resolvedURL()))
