@@ -8,7 +8,7 @@ import { naverPhoto } from '@/lib/naver';
 
 export async function POST(req: Request) {
   const uid = await getUid();
-  const { url, caption, memo } = await req.json();
+  const { url, caption, memo, forcePending } = await req.json();
   const userMemo = (memo || '').trim();
   if (!url || typeof url !== 'string') return NextResponse.json({ error: '링크를 입력해 주세요' }, { status: 400 });
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     enriched.push({ name: p.name, cat_id, region: g.region, address: g.address, lat: g.lat, lng: g.lng, photo, memo: userMemo });
   }
 
-  if (enriched.length === 1) {
+  if (enriched.length === 1 && !forcePending) {
     const c = enriched[0];
     const info = await d.execute({
       sql: 'INSERT INTO places (uid,title,cat_id,region,address,photo,lat,lng,source,source_url,memo) VALUES (?,?,?,?,?,?,?,?,?,?,?)',

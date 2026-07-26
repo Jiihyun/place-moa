@@ -1,0 +1,4 @@
+PLACE_MOA_WEB_SCHEME = https
+PLACE_MOA_WEB_HOST = place-moaa.vercel.app
+PLACE_MOA_WEB_PORT =
+PLACE_MOA_WEB_PATH =

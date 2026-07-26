@@ -52,6 +52,21 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToastMsg(''), 2200);
   }, []);
 
+  const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  const naverPlaceUrl = (name: string) => `https://map.naver.com/p/search/${encodeURIComponent(name)}`;
+
+  const openNaverPlace = (name: string) => {
+    const webUrl = naverPlaceUrl(name);
+    if (!isIOS()) {
+      window.open(webUrl, '_blank');
+      return;
+    }
+
+    const appUrl = `nmap://search?query=${encodeURIComponent(name)}&appname=com.jihyun.placemoa`;
+    window.location.href = appUrl;
+  };
+
   const catOf = useCallback((id: number | null) => cats.find(c => c.id === id), [cats]);
   const styleOf = useCallback((id: number | null) => {
     const c = catOf(id);
@@ -172,11 +187,20 @@ export default function App() {
   };
 
   /* ---------- ingest ---------- */
-  const submitIngest = async () => {
-    if (!addUrl.trim()) { toast('링크를 붙여넣어 주세요'); return; }
+  const ingestUrl = async (url: string, opts: { memo?: string; caption?: string; forcePending?: boolean; fromShare?: boolean } = {}) => {
+    if (!url.trim()) { toast('링크를 붙여넣어 주세요'); return; }
     setIngesting(true); setAddErr('');
     try {
-      const r = await fetch('/api/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: addUrl.trim(), memo: addMemo, caption: addCaption }) });
+      const r = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url.trim(),
+          memo: opts.memo ?? addMemo,
+          caption: opts.caption ?? addCaption,
+          forcePending: opts.forcePending,
+        }),
+      });
       const j = await r.json();
       if (!r.ok) { setAddErr(j.error || '분석에 실패했어요'); return; }
       setOverlay(null); setAddUrl(''); setAddMemo(''); setAddCaption(''); setAddErr('');
@@ -187,11 +211,27 @@ export default function App() {
         if (j.saved.lat != null) setTimeout(() => { mapRef.current?.setView([j.saved.lat, j.saved.lng], 16); }, 300);
       } else if (j.pending) {
         setPendings(pd => [...pd, { ...j.pending, candidates: j.pending.candidates.map((c: Cand) => ({ ...c, checked: true, memo: c.memo || '' })) }]);
-        toast(`장소 ${j.pending.candidates.length}곳 찾음 — 대기함에서 골라 저장하세요${j.usedAI ? '' : ' (데모 추출)'}`);
+        toast(`${opts.fromShare ? '공유한 링크에서 ' : ''}장소 ${j.pending.candidates.length}곳 찾음 — 대기함에서 골라 저장하세요${j.usedAI ? '' : ' (데모 추출)'}`);
         setTab('inbox');
       }
     } finally { setIngesting(false); }
   };
+
+  const submitIngest = async () => {
+    await ingestUrl(addUrl);
+  };
+
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    const sharedUrl = p.get('iosShareUrl');
+    if (!sharedUrl) return;
+
+    const decoded = decodeURIComponent(sharedUrl);
+    history.replaceState(null, '', location.pathname);
+    setTab('inbox');
+    toast('공유한 링크를 분석할게요');
+    ingestUrl(decoded, { forcePending: true, fromShare: true });
+  }, []);
 
   /* ---------- inbox ---------- */
   const readyCount = pendings.reduce((s, p) => s + p.candidates.length, 0);
@@ -415,7 +455,7 @@ export default function App() {
               <div className="actiontile" onClick={() => setOverlay({ kind: 'mapchooser', id: detail.id })}>
                 <div className="ic"><i className="ti ti-navigation" style={{ color: 'var(--primary)' }} /></div><span style={{ fontSize: 11, color: 'var(--body)' }}>길찾기</span>
               </div>
-              <div className="actiontile" onClick={() => window.open(`https://map.naver.com/p/search/${encodeURIComponent(detail.title)}`, '_blank')}>
+              <div className="actiontile" onClick={() => openNaverPlace(detail.title)}>
                 <div className="ic" style={{ background: '#03c75a', color: '#fff', fontWeight: 800, fontSize: 16 }}>N</div><span style={{ fontSize: 11, color: 'var(--body)' }}>리뷰</span>
               </div>
             </div>
@@ -494,7 +534,7 @@ export default function App() {
               const p = places.find(x => x.id === overlay.id)!;
               const q2 = encodeURIComponent(p.title);
               const rows = [
-                ['네이버지도', '#03c75a', '#fff', 'N', `https://map.naver.com/p/search/${q2}`],
+                ['네이버지도', '#03c75a', '#fff', 'N', isIOS() ? `nmap://search?query=${q2}&appname=com.jihyun.placemoa` : naverPlaceUrl(p.title)],
                 ['카카오맵', '#fee500', '#3c1e1e', 'K', `https://map.kakao.com/link/search/${q2}`],
                 ['구글 지도', '#4285f4', '#fff', 'G', `https://www.google.com/maps/search/${q2}`],
               ];
