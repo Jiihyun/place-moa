@@ -17,7 +17,7 @@ struct PlaceMoaApp: App {
                 sharedURL = AppConfig.sharedURL(from: url)
                 consumeQueuedShare()
             }
-            .onChange(of: scenePhase) { _, phase in
+            .onChange(of: scenePhase) { phase in
                 if phase == .active {
                     consumeQueuedShare()
                 }
@@ -35,7 +35,7 @@ enum AppConfig {
     static var webURL: URL {
         var components = URLComponents()
         components.scheme = bundleValue("PlaceMoaWebScheme", fallback: "https")
-        components.host = bundleValue("PlaceMoaWebHost", fallback: "place-moa.vercel.app")
+        components.host = bundleValue("PlaceMoaWebHost", fallback: "place-moaa.vercel.app")
         components.path = bundleValue("PlaceMoaWebPath", fallback: "")
 
         if let port = Int(bundleValue("PlaceMoaWebPort", fallback: "")) {

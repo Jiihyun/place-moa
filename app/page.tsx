@@ -56,15 +56,10 @@ export default function App() {
 
   const naverPlaceUrl = (name: string) => `https://map.naver.com/p/search/${encodeURIComponent(name)}`;
 
-  const openNaverPlace = (name: string) => {
-    const webUrl = naverPlaceUrl(name);
-    if (!isIOS()) {
-      window.open(webUrl, '_blank');
-      return;
-    }
-
-    const appUrl = `nmap://search?query=${encodeURIComponent(name)}&appname=com.jihyun.placemoa`;
-    window.location.href = appUrl;
+  // 네이버 리뷰: m.place.naver.com 에서 이름+주소로 장소 찾기 (경로에 주소는 404라 place/list 검색 사용)
+  const openNaverReview = (name: string, address: string) => {
+    const q = encodeURIComponent(`${name} ${address || ''}`.trim());
+    window.open(`https://m.place.naver.com/place/list?query=${q}`, '_blank');
   };
 
   const catOf = useCallback((id: number | null) => cats.find(c => c.id === id), [cats]);
@@ -455,7 +450,7 @@ export default function App() {
               <div className="actiontile" onClick={() => setOverlay({ kind: 'mapchooser', id: detail.id })}>
                 <div className="ic"><i className="ti ti-navigation" style={{ color: 'var(--primary)' }} /></div><span style={{ fontSize: 11, color: 'var(--body)' }}>길찾기</span>
               </div>
-              <div className="actiontile" onClick={() => openNaverPlace(detail.title)}>
+              <div className="actiontile" onClick={() => openNaverReview(detail.title, detail.address || detail.region)}>
                 <div className="ic" style={{ background: '#03c75a', color: '#fff', fontWeight: 800, fontSize: 16 }}>N</div><span style={{ fontSize: 11, color: 'var(--body)' }}>리뷰</span>
               </div>
             </div>

@@ -111,27 +111,22 @@ final class ShareViewController: UIViewController {
     }
 
     private func open(url: URL) {
+        // 공유 익스텐션 → 컨테이너 앱 열기: responder chain의 openURL: 호출 (표준 방식).
+        // 인박스에 이미 저장돼 있어(enqueue) 실행에 실패해도 앱을 열면 복구된다.
         let selector = NSSelectorFromString("openURL:")
         var responder: UIResponder? = self
 
         while let current = responder {
             if current.responds(to: selector) {
-                current.perform(selector, with: url)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.extensionContext?.completeRequest(returningItems: nil)
-                }
-                return
+                _ = current.perform(selector, with: url)
+                break
             }
-
             responder = current.next
         }
 
-        extensionContext?.open(url) { opened in
-            if opened {
-                self.extensionContext?.completeRequest(returningItems: nil)
-            } else {
-                self.finishWithMessage("장소모아 앱을 열고 대기함을 확인해 주세요")
-            }
+        // 어떤 경우에도 공유 시트는 닫는다.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            self.extensionContext?.completeRequest(returningItems: nil)
         }
     }
 

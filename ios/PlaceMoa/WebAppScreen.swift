@@ -133,11 +133,10 @@ private struct WebView: UIViewRepresentable {
     private func resolvedURL() -> URL {
         guard let sharedURL else { return url }
 
+        // 공유된 링크는 /add 페이지로 보내 웹에서 자동으로 AI 분석 → 장소 추가
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        var items = components?.queryItems ?? []
-        items.removeAll { $0.name == "iosShareUrl" }
-        items.append(URLQueryItem(name: "iosShareUrl", value: sharedURL.absoluteString))
-        components?.queryItems = items
+        components?.path = "/add"
+        components?.queryItems = [URLQueryItem(name: "url", value: sharedURL.absoluteString)]
 
         return components?.url ?? url
     }
