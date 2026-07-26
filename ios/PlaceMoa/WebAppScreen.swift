@@ -148,30 +148,15 @@ private struct WebView: UIViewRepresentable {
         }
     }
 
-    // 웹 쿠키(moa_uid)와 App Group의 공유 uid를 일치시킨다.
-    // - 기존 웹 쿠키가 있으면 그 값을 App Group에 반영(기존 데이터 보존, 익스텐션이 동일 계정 사용)
-    // - 없으면 App Group uid(없으면 생성)를 쿠키로 심는다
+    // 웹 moa_uid 쿠키를 공유 익스텐션과 동일한 uid(identifierForVendor 기반)로 강제한다.
+    // identifierForVendor는 같은 벤더의 앱·익스텐션이 동일 값을 가지므로 App Group
+    // 프로비저닝 없이도 저장 계정이 일치한다. 미들웨어가 다른 uid를 심는 것도 차단.
     private func syncSharedIdentity(store: WKHTTPCookieStore, completion: @escaping () -> Void) {
-        let group = UserDefaults(suiteName: "group.com.jihyun.placemoa")
         let host = url.host ?? "place-moaa.vercel.app"
+        let uid = UIDevice.current.identifierForVendor?.uuidString ?? "moa-shared-fallback"
 
         store.getAllCookies { cookies in
-            let cookieUid = cookies.first(where: { $0.name == "moa_uid" && !$0.value.isEmpty })?.value
-
-            // App Group의 uid가 유일한 기준. 익스텐션이 저장한 계정과 반드시 일치해야 하므로
-            // App Group에 값이 있으면 그걸 채택하고(절대 덮어쓰지 않음), 없을 때만
-            // 기존 웹 쿠키(있으면 기존 데이터 보존) 또는 새 uid로 초기화한다.
-            let uid: String
-            if let existing = group?.string(forKey: "moaUid"), !existing.isEmpty {
-                uid = existing
-            } else {
-                uid = cookieUid ?? UUID().uuidString
-                group?.set(uid, forKey: "moaUid")
-                group?.synchronize()
-            }
-
-            // 웹 쿠키를 항상 App Group uid로 강제(미들웨어가 다른 값을 심는 것 방지 + 익스텐션 저장분과 동일 계정 보장)
-            if cookieUid == uid {
+            if cookies.contains(where: { $0.name == "moa_uid" && $0.value == uid }) {
                 completion()
                 return
             }
