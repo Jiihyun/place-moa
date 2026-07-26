@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff385c">
+<title>장소모아 프로토타입</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.31.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+ /* Airbnb tokens (DESIGN-airbnb.md) */
+ --bg:#f7f7f7; --surface:#ffffff; --surface2:#f7f7f7; --surface-strong:#f2f2f2; --tertiary:#f7f7f7;
+ --ink:#222222; --text:#222222; --body:#3f3f3f; --text2:#6a6a6a; --text3:#929292;
+ --border:#dddddd; --border2:#dddddd; --border-strong:#c1c1c1;
+ --primary:#ff385c; --primary-active:#e00b41; --danger:#c13515; --danger-b:rgba(193,53,21,.42);
+ --radius:8px; --radius-lg:14px; --radius-pill:9999px;
+ --shadow:rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:'Airbnb Cereal VF',Inter,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh}
+.wrap{max-width:520px;margin:0 auto;padding:16px 14px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
+.simbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.simlabel{font-size:11px;color:var(--text3);width:100%;text-align:center;margin:2px 0 -2px}
+.simbtn{font-size:13px;font-weight:500;padding:9px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.simbtn.loc i{color:var(--primary)}
+.simbtn:active{transform:scale(.97)}
+.hint{font-size:12px;color:var(--text2);margin:0;text-align:center}
+.phone{width:100%;max-width:380px;height:min(720px,82vh);border-radius:32px;border:8px solid #222222;background:var(--surface);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.16)}
+#screen{flex:1;position:relative;overflow:hidden}
+.panel{display:none;position:absolute;inset:0}
+.panel.on{display:flex;flex-direction:column}
+#p-list.on,#p-inbox.on,#p-set.on{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#p-map{isolation:isolate}
+#map{flex:1;background:var(--surface-strong)}
+#detail{display:none;position:absolute;inset:0;background:var(--surface);overflow-y:auto;z-index:6}
+#tabbar{display:flex;border-top:1px solid var(--border);background:var(--surface)}
+input,textarea,button{font-family:inherit}
+input,textarea{border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;background:var(--surface);color:var(--ink);outline:none}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+input:focus,textarea:focus{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+button{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--ink);padding:9px 14px;font-weight:500;cursor:pointer}
+button:active{transform:scale(.98)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:500;padding:7px 13px;border-radius:var(--radius-pill);border:1px solid var(--border);color:var(--ink);cursor:pointer;user-select:none;white-space:nowrap;background:var(--surface)}
+.chipon{background:var(--ink);color:#fff;border:1px solid var(--ink);font-weight:600}
+.row{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center}
+.row:active{background:var(--surface2)}
+.thumb{width:48px;height:48px;border-radius:var(--radius-lg);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;font-size:11px;color:var(--text3);cursor:pointer;position:relative;user-select:none}
+.tbon{color:var(--primary);font-weight:600}
+.cbdg{font-size:11px;padding:3px 9px;border-radius:var(--radius-pill);background:var(--surface-strong);color:var(--text2)}
+.vchk{font-size:11px;color:var(--ink);font-weight:600;white-space:nowrap}
+.pbtn{background:var(--primary);color:#fff;border:none;border-radius:var(--radius);padding:14px;width:100%;font-size:16px;font-weight:500;cursor:pointer;height:48px}
+.pbtn:active{background:var(--primary-active)}
+#overlay{position:absolute;inset:0;display:none;z-index:8}
+#toast{position:absolute;top:16px;left:24px;right:24px;display:none;background:var(--ink);color:#fff;font-size:13px;padding:11px 14px;border-radius:var(--radius);text-align:center;z-index:9;box-shadow:var(--shadow)}
+.hdr{padding:16px 16px 10px;font-size:20px;font-weight:600;letter-spacing:-0.18px;color:var(--ink);background:var(--surface)}
+.empty{text-align:center;color:var(--text3);font-size:14px;padding:40px 20px}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.tbadge{position:absolute;top:5px;right:24%;background:var(--primary);color:#fff;font-size:11px;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-weight:600}
+/* map pins */
+.leaflet-div-icon{background:transparent;border:none}
+.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.35);position:relative}
+.pin span{transform:rotate(45deg);font-size:14px;line-height:1}
+.pin.vis{opacity:.45}
+.pin .pchk{position:absolute;top:-7px;right:-7px;transform:rotate(45deg);background:var(--ink);color:#fff;font-size:9px;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff}
+.meloc{width:16px;height:16px;border-radius:50%;background:#2b7fff;border:3px solid #fff;box-shadow:0 0 0 4px rgba(43,127,255,.28)}
+/* proximity banner */
+#mbanner{display:none;background:var(--surface)}
+.banner{display:flex;align-items:center;gap:12px;margin:10px;padding:13px 15px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;box-shadow:var(--shadow)}
+.banner .bi{font-size:22px;color:var(--primary)}
+.banner b{font-size:14px;font-weight:600;color:var(--ink)}
+.banner .bs{font-size:13px;color:var(--text2)}
+.banner .bx{font-size:18px;color:var(--text3)}
+.leaflet-popup-content b{font-size:13px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="simbar">
+  <span class="simlabel">다른 앱에서 공유한 상황 ↓ — 인스타: 여러 곳 → 대기함 · 유튜브: 1곳 → 즉시 저장 · 지도앱: 확정 장소 → 즉시 저장</span>
+  <button class="simbtn" onclick="simShare('instagram')"><i class="ti ti-brand-instagram"></i> 인스타 공유</button>
+  <button class="simbtn" onclick="simShare('youtube')"><i class="ti ti-brand-youtube"></i> 유튜브 공유</button>
+  <button class="simbtn" onclick="simShare('naver')"><i class="ti ti-map-pin"></i> 지도앱 공유</button>
+ </div>
+ <div class="simbar">
+  <span class="simlabel">내 위치가 그 동네로 이동한 상황 ↓ (근처 저장 장소 알림 데모)</span>
+  <button class="simbtn loc" onclick="goLoc('성수')"><i class="ti ti-current-location"></i> 성수동으로</button>
+  <button class="simbtn loc" onclick="goLoc('홍대')"><i class="ti ti-current-location"></i> 홍대로</button>
+  <button class="simbtn loc" onclick="goLoc('강남')"><i class="ti ti-current-location"></i> 강남으로</button>
+ </div>
+ <p class="hint">프로토타입 · 새로고침하면 초기화 · 지도는 인터넷 연결 필요</p>
+ <div class="phone">
+  <div id="screen">
+   <div id="p-map" class="panel">
+    <div id="mbanner"></div>
+    <div id="map"></div>
+   </div>
+   <div id="p-list" class="panel"></div>
+   <div id="p-inbox" class="panel"></div>
+   <div id="p-set" class="panel"></div>
+   <div id="detail"></div>
+  </div>
+  <div id="tabbar"></div>
+  <div id="overlay"></div>
+  <div id="toast"></div>
+ </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- data ---------- */
+let cats=[{id:1,name:'맛집'},{id:2,name:'카페'},{id:3,name:'술집·바'},{id:4,name:'기타'}];
+const CAT_STYLE={1:{c:'#e0483d',e:'🍽'},2:{c:'#9a6b3f',e:'☕'},3:{c:'#2f4b7c',e:'🍺'},4:{c:'#8a8a86',e:'📍'}};
+const SRC={instagram:{app:'인스타그램',dom:'instagram.com'},youtube:{app:'유튜브',dom:'youtube.com'},naver:{app:'지도 앱',dom:'지도 앱'}};
+const LOC={'성수':{lat:37.5447,lng:127.0557,name:'성수동'},'홍대':{lat:37.5563,lng:126.9236,name:'홍대'},'강남':{lat:37.4979,lng:127.0276,name:'강남'}};
+const R=900; // 근처 판정 반경(m)
+
+let places=[
+ {id:1,source:'instagram',title:'대림창고',cat:2,region:'성수',lat:37.5438,lng:127.0566,memo:'주말 브런치',visits:1,verdict:'meh'},
+ {id:2,source:'naver',title:'소금집 델리',cat:1,region:'성수',lat:37.5451,lng:127.0552,memo:'',visits:2,verdict:'again'},
+ {id:3,source:'youtube',title:'감나무집',cat:1,region:'홍대',lat:37.5580,lng:126.9250,memo:'웨이팅 김',visits:0,verdict:null},
+ {id:4,source:'instagram',title:'앤트러사이트',cat:2,region:'강남',lat:37.4968,lng:127.0285,memo:'',visits:0,verdict:null},
+ {id:5,source:'naver',title:'역전할머니맥주 역삼점',cat:3,region:'강남',lat:37.4990,lng:127.0290,memo:'퇴근 후',visits:0,verdict:null}
+];
+// 공유 시나리오: 인스타=여러 곳(대기함) · 유튜브=1곳(즉시 저장) · 지도앱=확정 장소(즉시 저장)
+const VIDEO_POOLS={
+ instagram:[
+  {title:'성수 카페 투어 릴스',places:[
+    {t:'블루보틀 성수점',cat:2,region:'성수',lat:37.5434,lng:127.0560},
+    {t:'센터커피',cat:2,region:'성수',lat:37.5470,lng:127.0575},
+    {t:'어니언 성수점',cat:2,region:'성수',lat:37.5443,lng:127.0578}
+  ]},
+  {title:'홍대 먹방 브이로그',places:[
+    {t:'서서갈비',cat:1,region:'홍대',lat:37.5588,lng:126.9240},
+    {t:'여얼커피',cat:2,region:'홍대',lat:37.5550,lng:126.9228},
+    {t:'숲길포차',cat:3,region:'홍대',lat:37.5572,lng:126.9245}
+  ]},
+  {title:'강남 데이트 코스',places:[
+    {t:'스시조',cat:1,region:'강남',lat:37.4985,lng:127.0260},
+    {t:'알베르',cat:2,region:'강남',lat:37.4975,lng:127.0298}
+  ]}
+ ],
+ youtube:[
+  {title:'을지로 와인바 릴스',places:[
+    {t:'바 참',cat:3,region:'을지로',lat:37.5662,lng:126.9938}
+  ]},
+  {title:'성수 베이글 맛집 쇼츠',places:[
+    {t:'런던베이글뮤지엄 성수점',cat:1,region:'성수',lat:37.5459,lng:127.0546}
+  ]}
+ ]
+};
+// 지도앱 공유: 장소·좌표가 이미 확정돼 있어 AI 분석이 필요 없음
+const NAVER_POOL=[
+ {t:'테라로사 광화문점',cat:2,region:'광화문',lat:37.5716,lng:126.9789},
+ {t:'광화문국밥',cat:1,region:'광화문',lat:37.5700,lng:126.9769}
+];
+let nid=6,ncid=5,pid=1000;
+const shareIdx={instagram:0,youtube:0,naver:0};
+let pendings=[];
+let tab='map',detailId=null,draft=null,q='',filterCat=0,filterRegion='',onlyUnvisited=false,myLoc=null;
+let selectMode=false,selected=[],shareIds=[],shareName='',shareTitle='',onlyAgain=false;
+let map=null,markerLayer=null,meLayer=null,markersById={};
+
+/* ---------- helpers ---------- */
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function styleOf(cat){if(cat==null)return{c:'#b0afab',e:'📍'};return CAT_STYLE[cat]||{c:'#8a8a86',e:'📍'}}
+/* 썸네일: 실제로는 네이버 플레이스 사진(og:image). 프로토타입은 카테고리별 대표 사진 플레이스홀더 + 실패 시 이모지 타일 */
+function hashNum(s){let h=0;s=s||'';for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h%100000}
+// 카테고리별 대표 사진(Unsplash). 실제 앱에선 네이버 플레이스 사진으로 대체
+const CAT_PHOTOS={
+ 1:['1504674900247-0877df9cc836','1517248135467-4c7edcad34c4','1552566626-52f8b828add9','1555939594-58d7cb561ad1','1476224203421-9ac39bcb3327'],
+ 2:['1495474472287-4d71bcdd2085','1501339847302-ac426a4a7cbb','1445116572660-236099ec97a0','1509042239860-f550ce710b93'],
+ 3:['1436076863939-06870fe779c2','1514362545857-3bc16c4c7d1b','1541557435984-1c79685a082b'],
+ 4:['1414235077428-338989a2e8c0','1466978913421-dad2ebd01d17']
+};
+function thumbURL(p){const arr=CAT_PHOTOS[p.cat]||CAT_PHOTOS[4];const seed=p.id||hashNum(p.title||p.t);return 'https://images.unsplash.com/photo-'+arr[seed%arr.length]+'?w=200&h=200&fit=crop&q=60'}
+function thumbTileSVG(p){const st=styleOf(p.cat);const svg="<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' fill='"+st.c+"'/><rect width='120' height='120' fill='#00000022'/><text x='60' y='74' font-size='54' text-anchor='middle'>"+st.e+"</text></svg>";return 'data:image/svg+xml,'+encodeURIComponent(svg)}
+function thumbImg(p,sz,rad){return `<img src="${thumbURL(p)}" onerror="this.onerror=null;this.src='${thumbTileSVG(p)}'" style="width:${sz}px;height:${sz}px;object-fit:cover;border-radius:${rad}px;flex-shrink:0;display:block;background:#eee">`}
+function catName(cat){if(cat==null)return'미분류';const c=cats.find(x=>x.id===cat);return c?c.name:'미분류'}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2000)}
+function dist(a,b,c,d){const R2=6371000,r=Math.PI/180,dLat=(c-a)*r,dLng=(d-b)*r;const x=Math.sin(dLat/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLng/2)**2;return 2*R2*Math.asin(Math.sqrt(x))}
+function regions(){return [...new Set(places.map(p=>p.region))]}
+
+/* ---------- map ---------- */
+function initMap(){
+ map=L.map('map',{zoomControl:true,attributionControl:true}).setView([37.53,127.0],12);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+ markerLayer=L.layerGroup().addTo(map);
+ meLayer=L.layerGroup().addTo(map);
+ refreshMarkers();
+ fitAll();
+}
+function pinIcon(p){
+ const st=styleOf(p.cat);
+ const badge=p.verdict==='again'?'<b class="pchk" style="background:#e0245e">♥</b>':(p.visits>0?'<b class="pchk">✓</b>':'');
+ return L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-26],
+  html:`<div class="pin${p.verdict==='meh'?' vis':''}" style="background:${st.c}"><span>${st.e}</span>${badge}</div>`});
+}
+function meIcon(){return L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],html:'<div class="meloc"></div>'})}
+function popupHtml(p){
+ return `<div style="min-width:150px"><b>${esc(p.title)}</b><br>
+  <span style="color:#6a6a6a;font-size:12px">${esc(catName(p.cat))} · ${esc(p.region)}${p.visits>0?` · <span style='color:#222222;font-weight:600'>🥾${p.visits}회${p.verdict==='again'?' 💖':p.verdict==='meh'?' 😐':''}</span>`:''}</span><br>
+  <a href="#" onclick="openDetail(${p.id});return false" style="color:#534ab7;font-size:12px">상세 보기 →</a></div>`;
+}
+function refreshMarkers(){
+ if(!markerLayer)return;
+ markerLayer.clearLayers();markersById={};
+ places.forEach(p=>{
+  const m=L.marker([p.lat,p.lng],{icon:pinIcon(p)}).addTo(markerLayer);
+  m.bindPopup(popupHtml(p));
+  markersById[p.id]=m;
+ });
+}
+function fitAll(){if(!map||!places.length)return;map.fitBounds(L.latLngBounds(places.map(p=>[p.lat,p.lng])).pad(0.3))}
+function drawMe(){
+ if(!meLayer)return;meLayer.clearLayers();if(!myLoc)return;
+ L.circle([myLoc.lat,myLoc.lng],{radius:R,color:'#2b7fff',weight:1,fillColor:'#2b7fff',fillOpacity:.1}).addTo(meLayer);
+ L.marker([myLoc.lat,myLoc.lng],{icon:meIcon()}).addTo(meLayer);
+}
+function showBanner(near){
+ const b=document.getElementById('mbanner');
+ if(!near.length){b.style.display='none';b.innerHTML='';return}
+ b.style.display='block';
+ b.innerHTML=`<div class="banner" onclick="openDetail(${near[0].id})">
+  <i class="ti ti-map-pin-filled bi"></i>
+  <div style="flex:1"><b>지금 ${esc(myLoc.name)} 근처예요</b><br>
+   <span class="bs">저장한 곳 ${near.length}곳 — ${esc(near[0].title)}${near.length>1?` 외 ${near.length-1}곳`:''}</span></div>
+  <i class="ti ti-chevron-right bx"></i></div>`;
+}
+function goLoc(key){
+ const l=LOC[key];myLoc={lat:l.lat,lng:l.lng,name:l.name};
+ go('map');drawMe();
+ setTimeout(()=>map.setView([l.lat,l.lng],15),80);
+ const near=places.filter(p=>dist(p.lat,p.lng,l.lat,l.lng)<=R)
+   .sort((a,b)=>dist(a.lat,a.lng,l.lat,l.lng)-dist(b.lat,b.lng,l.lat,l.lng));
+ showBanner(near);
+ if(near.length){toast(`📍 ${l.name} 근처에 저장한 곳 ${near.length}곳`);setTimeout(()=>{const m=markersById[near[0].id];if(m)m.openPopup()},400)}
+ else toast(`${l.name} 근처엔 저장한 곳이 없어요`);
+}
+function showOnMap(id){
+ const p=places.find(x=>x.id===id);if(!p)return;
+ closeDetail();go('map');
+ setTimeout(()=>{map.setView([p.lat,p.lng],16);const m=markersById[id];if(m)m.openPopup()},140);
+}
+function naverReview(id){const p=places.find(x=>x.id===id);if(!p)return;window.open('https://map.naver.com/p/search/'+encodeURIComponent(p.title),'_blank');toast('네이버 지도·리뷰로 이동')}
+
+/* ---------- list ---------- */
+function listArr(){
+ let a=places.slice().reverse();
+ if(filterCat)a=a.filter(p=>p.cat===filterCat);
+ if(filterRegion)a=a.filter(p=>p.region===filterRegion);
+ if(onlyUnvisited)a=a.filter(p=>p.visits===0);
+ if(onlyAgain)a=a.filter(p=>p.verdict==='again');
+ if(q)a=a.filter(p=>((p.title||'')+(p.memo||'')).toLowerCase().includes(q.toLowerCase()));
+ return a;
+}
+function rowHtml(p){
+ const st=styleOf(p.cat),s=SRC[p.source];
+ if(selectMode){
+  const on=selected.includes(p.id);
+  return `<div class="row" onclick="toggleSelect(${p.id})">
+   <i class="ti ti-${on?'circle-check-filled':'circle'}" style="font-size:23px;color:${on?'var(--primary)':'var(--text3)'};flex-shrink:0"></i>
+   ${thumbImg(p,40,10)}
+   <div style="min-width:0;flex:1"><p style="margin:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</p>
+    <p style="margin:2px 0 0;font-size:12px;color:var(--text3)">${esc(catName(p.cat))} · ${esc(p.region)}</p></div></div>`;
+ }
+ return `<div class="row" onclick="openDetail(${p.id})">
+  ${thumbImg(p,48,12)}
+  <div style="min-width:0;flex:1">
+   <p style="margin:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</p>
+   <p style="margin:2px 0 0;font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+    <i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${esc(p.region)} · ${p.memo?esc(p.memo):s.app}</p>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+   <span class="cbdg">${esc(catName(p.cat))}</span>
+   ${p.visits>0?`<span class="vchk">🥾${p.visits}회${p.verdict==='again'?' 💖':p.verdict==='meh'?' 😐':''}</span>`:''}
+  </div></div>`;
+}
+function listBodyHtml(){const a=listArr();return a.length?a.map(rowHtml).join(''):'<p class="empty">조건에 맞는 장소가 없어요.</p>'}
+function pendRowsHtml(){
+ if(!pendings.length)return '';
+ let html=pendings.filter(p=>p.status==='analyzing').map(p=>`<div class="row" style="cursor:default;background:var(--surface-strong)">
+    <div class="thumb" style="background:var(--surface)"><i class="ti ti-loader-2 spin" style="font-size:20px;color:var(--text3)"></i></div>
+    <div style="flex:1;min-width:0"><p style="margin:0;font-size:13px;font-weight:600">위치 분석 중…</p>
+    <p style="margin:2px 0 0;font-size:12px;color:var(--text3)">🎬 ${esc(p.video.title)} · AI가 장소를 찾는 중</p></div></div>`).join('');
+ const ready=pendings.filter(p=>p.status==='ready');
+ if(ready.length){
+  const nChecked=ready.reduce((s,p)=>s+p.candidates.filter(c=>c.checked).length,0);
+  html+=`<div style="background:#fff5f6;border-bottom:1px solid var(--border);padding:12px 16px 14px">
+   <p style="margin:0 0 2px;font-size:14px;font-weight:700"><i class="ti ti-sparkles" style="color:var(--primary);font-size:14px;vertical-align:-2px"></i> 영상에서 찾은 장소</p>
+   <p style="margin:0;font-size:12px;color:var(--text2)">추가 안 할 곳만 체크 해제하세요 · 카테고리 탭으로 변경</p>
+   ${ready.map(p=>`
+    <p style="margin:12px 0 2px;font-size:12px;font-weight:600;color:var(--text2)">🎬 ${esc(p.video.title)}</p>
+    ${p.candidates.map((c,i)=>{const st=styleOf(c.cat);return `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)">
+      <div style="display:flex;align-items:center;gap:10px">
+       <i class="ti ti-${c.checked?'circle-check-filled':'circle'}" style="font-size:22px;color:${c.checked?'var(--primary)':'var(--text3)'};cursor:pointer;flex-shrink:0" onclick="pToggle(${p.id},${i})"></i>
+       <span onclick="pToggle(${p.id},${i})" style="cursor:pointer;flex-shrink:0">${thumbImg(c,36,8)}</span>
+       <div style="flex:1;min-width:0;cursor:pointer" onclick="pToggle(${p.id},${i})">
+        <p style="margin:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.t)}</p>
+        <p style="margin:1px 0 0;font-size:11px;color:var(--text3)"><i class="ti ti-map-pin" style="font-size:10px;vertical-align:-1px"></i> ${esc(c.region)}</p></div>
+       <span class="chip" style="flex-shrink:0;gap:5px;font-size:12px;padding:5px 10px" onclick="pCycle(${p.id},${i})"><span style="width:8px;height:8px;border-radius:50%;background:${st.c};display:inline-block"></span>${esc(catName(c.cat))} <i class="ti ti-selector" style="font-size:12px;color:var(--text3)"></i></span>
+      </div>
+      ${c.checked?`<input placeholder="메모 (선택)" value="${esc(c.memo||'')}" oninput="pMemo(${p.id},${i},this.value)" style="width:calc(100% - 32px);margin:6px 0 0 32px;font-size:12px;padding:6px 9px">`:''}
+     </div>`}).join('')}
+   `).join('')}
+   <button class="pbtn" style="margin-top:12px;${nChecked?'':'opacity:.4;pointer-events:none'}" onclick="pendAddAll()">${nChecked?`선택한 ${nChecked}곳 추가`:'추가할 곳을 선택하세요'}</button>
+  </div>`;
+ }
+ return html;
+}
+function renderList(){
+ if(selectMode)return renderSelectList();
+ const rs=regions();
+ document.getElementById('p-list').innerHTML=`
+  <div class="hdr" style="display:flex;align-items:center;justify-content:space-between">
+   <span>저장한 장소</span>
+   <span style="font-size:14px;font-weight:500;color:var(--primary);cursor:pointer" onclick="toggleSelectMode()"><i class="ti ti-check" style="font-size:15px;vertical-align:-2px"></i> 선택·공유</span></div>
+  <div style="padding:0 14px 8px;background:var(--surface)"><input placeholder="이름·메모 검색" value="${esc(q)}" oninput="setQ(this.value)" style="width:100%;font-size:13px"></div>
+  <div style="display:flex;gap:6px;overflow-x:auto;padding:0 14px 8px;background:var(--surface)">
+   <span class="chip ${filterCat===0?'chipon':''}" onclick="setCat(0)">전체</span>
+   ${cats.map(c=>`<span class="chip ${filterCat===c.id?'chipon':''}" onclick="setCat(${c.id})">${esc(c.name)}</span>`).join('')}
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;padding:0 14px 10px;background:var(--surface);border-bottom:1px solid var(--border)">
+   <button onclick="openRegionSheet()" style="display:flex;align-items:center;gap:6px;font-size:13px;padding:8px 13px;border-radius:var(--radius);border:1px solid ${filterRegion?'var(--ink)':'var(--border)'};background:var(--surface);${filterRegion?'font-weight:600':''}">
+    <i class="ti ti-map-pin-filled" style="font-size:14px;color:var(--primary)"></i> ${filterRegion?esc(filterRegion):'전체 지역'} <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text2)"></i></button>
+   <span class="chip ${onlyUnvisited?'chipon':''}" onclick="toggleUnvisited()"><i class="ti ti-flag" style="font-size:12px"></i> 안 가본 곳만</span>
+   <span class="chip ${onlyAgain?'chipon':''}" onclick="toggleAgain()">💖 또 갈 곳</span>
+  </div>
+  <div id="listbody">${listBodyHtml()}</div>`;
+}
+function setQ(v){q=v;const el=document.getElementById('listbody');if(el)el.innerHTML=listBodyHtml()}
+function setCat(id){filterCat=id;renderList()}
+function setRegion(r){filterRegion=r;renderList()}
+/* 지역 선택 바텀시트 (카테고리 칩과 구분되는 UI) */
+function openRegionSheet(){
+ const ov=document.getElementById('overlay');
+ const rs=regions();
+ const row=(r,label)=>{const n=r===''?places.length:places.filter(p=>p.region===r).length;const on=filterRegion===r;
+  return `<div onclick="pickRegion('${r}')" style="display:flex;align-items:center;gap:11px;padding:14px 6px;border-bottom:1px solid var(--border);cursor:pointer">
+   <i class="ti ti-map-pin${on?'-filled':''}" style="font-size:18px;color:${on?'var(--primary)':'var(--text3)'}"></i>
+   <span style="flex:1;font-size:15px;${on?'font-weight:700':''}">${esc(label)}</span>
+   <span class="cbdg">${n}곳</span>
+   ${on?'<i class="ti ti-check" style="font-size:18px;color:var(--ink)"></i>':''}</div>`};
+ ov.style.display='block';
+ ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" onclick="closeRegionSheet()"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px 18px">
+   <div style="width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>
+   <p style="margin:0 0 3px;font-size:18px;font-weight:600;letter-spacing:-0.2px">지역 선택</p>
+   <p style="margin:0 0 6px;font-size:13px;color:var(--text2)">저장한 장소가 있는 동네만 보여요</p>
+   ${row('','전체 지역')}${rs.map(r=>row(r,r)).join('')}</div>`;
+}
+function closeRegionSheet(){const ov=document.getElementById('overlay');ov.style.display='none';ov.innerHTML=''}
+function pickRegion(r){filterRegion=r;closeRegionSheet();renderList()}
+function toggleUnvisited(){onlyUnvisited=!onlyUnvisited;if(onlyUnvisited)onlyAgain=false;renderList()}
+function toggleAgain(){onlyAgain=!onlyAgain;if(onlyAgain)onlyUnvisited=false;renderList()}
+/* ---------- 여러 장소 → 하나의 공유 링크로 묶기 ---------- */
+function toggleSelectMode(){selectMode=!selectMode;selected=[];renderList()}
+function toggleSelect(id){const i=selected.indexOf(id);if(i<0)selected.push(id);else selected.splice(i,1);renderSelectList()}
+function renderSelectList(){
+ const arr=places.slice().reverse();
+ document.getElementById('p-list').innerHTML=`
+  <div class="hdr" style="display:flex;align-items:center;justify-content:space-between">
+   <span>${selected.length?`${selected.length}곳 선택됨`:'장소 선택'}</span>
+   <span style="font-size:14px;font-weight:500;color:var(--primary);cursor:pointer" onclick="toggleSelectMode()">취소</span></div>
+  <p style="margin:0;padding:0 16px 10px;font-size:13px;color:var(--text2);background:var(--surface)">함께 공유할 장소를 골라주세요</p>
+  <div style="flex:1;overflow-y:auto">${arr.length?arr.map(rowHtml).join(''):'<p class="empty">저장한 장소가 없어요.</p>'}</div>
+  <div style="border-top:1px solid var(--border);padding:12px 16px;background:var(--surface)">
+   <button class="pbtn" style="${selected.length?'':'opacity:.4;pointer-events:none'}" onclick="openShare()">${selected.length?`${selected.length}곳 링크로 공유하기`:'장소를 선택하세요'}</button></div>`;
+}
+function openShare(){if(!selected.length)return;shareIds=selected.slice();shareName='';shareTitle='';renderShareCompose()}
+function renderShareCompose(){
+ const ov=document.getElementById('overlay');
+ ov.style.display='block';
+ ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" onclick="closeShare()"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px 20px">
+   <div style="width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>
+   <p style="margin:0 0 2px;font-size:18px;font-weight:600;letter-spacing:-0.2px">${shareIds.length}곳을 링크로 묶기</p>
+   <p style="margin:0 0 14px;font-size:13px;color:var(--text2)">제목·보내는 사람은 안 적어도 돼요</p>
+   <p style="margin:0 0 5px;font-size:12px;color:var(--text2)">제목 <span style="color:var(--text3)">(선택)</span></p>
+   <input id="shareTitleIn" value="${esc(shareTitle)}" placeholder="예: 성수 데이트 코스" style="width:100%;font-size:14px;margin-bottom:12px">
+   <p style="margin:0 0 5px;font-size:12px;color:var(--text2)">보내는 사람 <span style="color:var(--text3)">(선택)</span></p>
+   <input id="shareNameIn" value="${esc(shareName)}" placeholder="예: 지현" style="width:100%;font-size:14px;margin-bottom:16px">
+   <button class="pbtn" onclick="makeShare()">공유 미리보기 만들기</button></div>`;
+}
+function makeShare(){shareTitle=(document.getElementById('shareTitleIn').value||'').trim();shareName=(document.getElementById('shareNameIn').value||'').trim();renderShareOverlay()}
+function closeShare(){const ov=document.getElementById('overlay');ov.style.display='none';ov.innerHTML=''}
+function receiveSave(n){toast(`받는 사람의 장소모아에 ${n}곳이 저장돼요 (데모)`);closeShare();selectMode=false;selected=[];if(tab==='list')renderList()}
+function renderShareOverlay(){
+ const ov=document.getElementById('overlay');
+ const items=shareIds.map(id=>places.find(p=>p.id===id)).filter(Boolean);
+ const nm=shareName||'나';
+ ov.style.display='block';
+ ov.innerHTML=`<div style="position:absolute;inset:0;background:var(--surface);overflow-y:auto">
+   <div style="position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);z-index:2;border-bottom:1px solid var(--border)">
+     <i class="ti ti-arrow-left" style="font-size:22px;cursor:pointer" onclick="renderShareCompose()"></i>
+     <span style="flex:1;font-size:15px;font-weight:600">이렇게 공유돼요</span>
+     <i class="ti ti-x" style="font-size:24px;cursor:pointer" onclick="closeShare()"></i></div>
+   <p style="margin:0;padding:16px 18px 8px;font-size:12px;font-weight:600;color:var(--text3)">1 · 카톡으로 이렇게 도착해요</p>
+   <div style="margin:0 16px 24px;background:#b7c4d6;border-radius:18px;padding:14px">
+     <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.12)">
+       <div style="background:#141414;padding:24px 20px;text-align:center">
+         <p style="margin:0;color:#fff;font-size:21px;font-weight:800;line-height:1.32">장소 카드가<br>도착했어요!</p>
+         <div style="font-size:50px;margin-top:10px">📩</div></div>
+       <div style="padding:14px 14px 12px">
+         ${shareTitle?`<p style="margin:0 0 3px;font-size:12px;color:var(--text2)">${esc(nm)}님이 공유한</p><p style="margin:0 0 10px;font-size:16px;font-weight:700">${esc(shareTitle)} · ${items.length}곳</p>`:`<p style="margin:0 0 10px;font-size:14px;font-weight:600">${esc(nm)}님이 ${items.length}개의 장소를 공유했어요!</p>`}
+         <div style="background:var(--surface-strong);border-radius:8px;padding:11px;text-align:center;font-size:14px;font-weight:600">자세히 보기</div>
+         <div style="display:flex;align-items:center;gap:5px;margin-top:11px;font-size:12px;color:var(--text2)"><i class="ti ti-map-pin-filled" style="color:var(--primary)"></i> 장소모아</div>
+       </div></div></div>
+   <p style="margin:0;padding:0 18px 8px;font-size:12px;font-weight:600;color:var(--text3)">2 · 링크를 열면 이렇게 보여요</p>
+   <div style="background:#1c1b1a;border-radius:18px;margin:0 16px 18px;padding:22px 18px 20px">
+     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+       ${shareTitle?`<div style="min-width:0"><p style="margin:0 0 4px;color:#b9b5b0;font-size:13px;font-weight:500">${esc(nm)} 님이 공유했어요</p><p style="margin:0;color:#fff;font-size:23px;font-weight:700;line-height:1.3">${esc(shareTitle)} <span style="font-size:17px">✈️</span></p></div>`:`<p style="margin:0;color:#fff;font-size:22px;font-weight:700;line-height:1.35">${esc(nm)} 님이<br>공유한 장소예요 <span style="font-size:17px">✈️</span></p>`}
+       <i class="ti ti-send" style="color:var(--primary);font-size:32px;transform:rotate(10deg);flex-shrink:0"></i></div>
+     <div style="margin-top:20px;display:flex;flex-direction:column;gap:14px">
+       ${items.map((p,i)=>{const st=styleOf(p.cat);return `<div style="background:#fff;border-radius:14px;padding:13px;display:flex;align-items:center;gap:12px;transform:rotate(${i%2?1.1:-1.1}deg);box-shadow:0 7px 18px rgba(0,0,0,.28)">
+         ${thumbImg(p,46,10)}
+         <div style="min-width:0;flex:1"><p style="margin:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</p>
+           <p style="margin:3px 0 0;font-size:12px;color:var(--text2)">${esc(catName(p.cat))} · ${esc(p.region)} · ${SRC[p.source].app} 바로가기 ›</p></div></div>`}).join('')}
+     </div></div>
+   <div style="padding:2px 16px 28px">
+     <button class="pbtn" onclick="receiveSave(${items.length})">받은 장소 저장하기</button>
+     <p style="margin:11px 0 0;text-align:center;font-size:12px;color:var(--text3)">받는 사람은 이 버튼으로 ${items.length}곳을 자기 장소모아에 담아요</p></div>
+ </div>`;
+}
+
+/* ---------- settings ---------- */
+function renderSet(){
+ document.getElementById('p-set').innerHTML=`
+  <div class="hdr">설정</div>
+  <p style="margin:0;padding:0 16px 8px;font-size:13px;font-weight:600;color:var(--text2);background:var(--surface)">카테고리 관리 <span style="font-weight:400;color:var(--text3)">(지도 핀 색·모양)</span></p>
+  ${cats.map(c=>{const st=styleOf(c.id);return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid var(--border);background:var(--surface)">
+     <span style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${st.c};display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"><span style="transform:rotate(45deg);font-size:11px">${st.e}</span></span>
+     <span style="flex:1;font-size:14px">${esc(c.name)}</span>
+     <i class="ti ti-trash" style="font-size:16px;color:var(--text3);cursor:pointer" onclick="delCat(${c.id})"></i></div>`}).join('')}
+  <div style="display:flex;gap:8px;padding:12px 16px;background:var(--surface)"><input id="ncat" placeholder="새 카테고리" style="flex:1;font-size:13px"><button onclick="addCat()" style="font-size:13px">추가</button></div>
+  <p style="padding:4px 16px;font-size:11px;color:var(--text3)">새 카테고리는 회색 📍 핀으로 표시돼요 (프로토타입).</p>`;
+}
+function delCat(id){cats=cats.filter(c=>c.id!==id);places.forEach(p=>{if(p.cat===id)p.cat=null});if(filterCat===id)filterCat=0;refreshMarkers();renderSet();toast('카테고리 삭제 — 장소는 미분류로 이동')}
+function addCat(){const el=document.getElementById('ncat');const v=el.value.trim();if(!v)return;cats.push({id:ncid++,name:v});renderSet()}
+
+/* ---------- detail ---------- */
+function openDetail(id){detailId=id;const p=places.find(x=>x.id===id);if(!p)return;
+ if(map)map.closePopup();
+ const st=styleOf(p.cat),s=SRC[p.source];
+ const d=document.getElementById('detail');
+ d.innerHTML=`
+  <div style="display:flex;align-items:center;gap:8px;padding:13px 12px 8px;background:var(--surface)">
+   <i class="ti ti-arrow-left" style="font-size:20px;cursor:pointer" onclick="closeDetail()"></i>
+   <span style="font-size:15px;font-weight:600">장소 상세</span></div>
+  <div style="margin:4px 16px;position:relative;height:150px;border-radius:var(--radius-lg);overflow:hidden;background:${st.c}22">
+   <img src="${thumbURL(p)}" onerror="this.onerror=null;this.src='${thumbTileSVG(p)}'" style="width:100%;height:100%;object-fit:cover;display:block">
+   <span style="position:absolute;left:10px;top:10px;background:rgba(255,255,255,.92);color:${st.c};font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px">${st.e} ${esc(catName(p.cat))}</span></div>
+  <div style="padding:12px 16px 4px">
+   <p style="margin:0;font-size:16px;font-weight:600">${esc(p.title)}</p>
+   <p style="margin:5px 0 0;font-size:12px;color:var(--text3)"><i class="ti ti-map-pin" style="vertical-align:-2px"></i> ${esc(p.region)} · ${s.dom}</p></div>
+  <div style="display:flex;justify-content:space-around;padding:12px 10px 4px">
+   <div onclick="toast('${s.app}(으)로 이동 (시뮬레이션)')" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;width:64px">
+    <div style="width:46px;height:46px;border-radius:50%;background:var(--surface-strong);display:flex;align-items:center;justify-content:center"><i class="ti ti-player-play" style="font-size:20px"></i></div>
+    <span style="font-size:11px;color:var(--body)">원문 보기</span></div>
+   <div onclick="showOnMap(${p.id})" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;width:64px">
+    <div style="width:46px;height:46px;border-radius:50%;background:var(--surface-strong);display:flex;align-items:center;justify-content:center"><i class="ti ti-map-2" style="font-size:20px"></i></div>
+    <span style="font-size:11px;color:var(--body)">내 지도</span></div>
+   <div onclick="openMapChooser(${p.id})" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;width:64px">
+    <div style="width:46px;height:46px;border-radius:50%;background:var(--surface-strong);display:flex;align-items:center;justify-content:center"><i class="ti ti-navigation" style="font-size:20px;color:var(--primary)"></i></div>
+    <span style="font-size:11px;color:var(--body)">길찾기</span></div>
+   <div onclick="naverReview(${p.id})" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;width:64px">
+    <div style="width:46px;height:46px;border-radius:50%;background:#03c75a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">N</div>
+    <span style="font-size:11px;color:var(--body)">리뷰</span></div>
+  </div>
+  <div style="margin:10px 16px 0;border:1px solid var(--border);border-radius:var(--radius-lg);padding:13px 14px">
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <p style="margin:0;font-size:13px;font-weight:600">🥾 방문 기록 ${p.visits>0?`· <b>${p.visits}번</b> 다녀옴`:`<span style="color:var(--text3);font-weight:400">· 아직 안 가봄</span>`}</p>
+    <button style="font-size:12px;padding:7px 11px;flex-shrink:0" onclick="addVisit(${p.id})">+ 다녀왔어요</button></div>
+   ${p.visits>0?`<div style="display:flex;gap:8px;margin-top:11px">
+    <span class="chip ${p.verdict==='again'?'chipon':''}" onclick="setVerdict(${p.id},'again')">💖 또 가고 싶어요</span>
+    <span class="chip ${p.verdict==='meh'?'chipon':''}" onclick="setVerdict(${p.id},'meh')">😐 그냥 그랬어요</span></div>`:''}
+  </div>
+  <div style="padding:6px 16px">
+   <p style="margin:0 0 4px;font-size:12px;color:var(--text2)">메모</p>
+   <textarea style="width:100%;font-size:13px;min-height:52px" onchange="setMemo(${p.id},this.value)">${esc(p.memo)}</textarea></div>
+  <div style="padding:8px 16px 24px"><button style="width:100%;font-size:13px;color:var(--danger);border-color:var(--danger-b)" onclick="delItem(${p.id})"><i class="ti ti-trash" style="font-size:15px;vertical-align:-2px"></i> 삭제</button></div>`;
+ d.style.display='block';
+}
+function closeDetail(){detailId=null;document.getElementById('detail').style.display='none'}
+function setMemo(id,v){const p=places.find(x=>x.id===id);if(p){p.memo=v;toast('메모 저장됨')}}
+function addVisit(id){const p=places.find(x=>x.id===id);if(!p)return;p.visits=(p.visits||0)+1;refreshMarkers();openDetail(id);toast(p.visits===1?'첫 방문 기록! 어땠는지 남겨보세요':`${p.visits}번째 방문 기록!`)}
+function setVerdict(id,v){const p=places.find(x=>x.id===id);if(!p)return;p.verdict=(p.verdict===v?null:v);refreshMarkers();openDetail(id)}
+/* 길찾기: 유저가 쓰는 지도 앱 선택 */
+function openMapChooser(id){
+ const p=places.find(x=>x.id===id);if(!p)return;
+ const q=encodeURIComponent(p.title);
+ const row=(name,bg,fg,ic,url)=>`<div onclick="window.open('${url}','_blank');closeMapChooser();toast('${name}(으)로 열기')" style="display:flex;align-items:center;gap:12px;padding:13px 6px;border-bottom:1px solid var(--border);cursor:pointer">
+   <span style="width:34px;height:34px;border-radius:9px;background:${bg};color:${fg};display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${ic}</span>
+   <span style="flex:1;font-size:15px">${name}</span><i class="ti ti-chevron-right" style="color:var(--text3)"></i></div>`;
+ const ov=document.getElementById('overlay');
+ ov.style.display='block';
+ ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" onclick="closeMapChooser()"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px 18px">
+   <div style="width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>
+   <p style="margin:0 0 2px;font-size:17px;font-weight:600">어떤 지도로 열까요?</p>
+   <p style="margin:0 0 6px;font-size:12px;color:var(--text2)">쓰시는 지도 앱으로 '${esc(p.title)}' 길찾기</p>
+   ${row('네이버지도','#03c75a','#fff','N','https://map.naver.com/p/search/'+q)}
+   ${row('카카오맵','#fee500','#3c1e1e','K','https://map.kakao.com/link/search/'+q)}
+   ${row('구글 지도','#4285f4','#fff','G','https://www.google.com/maps/search/'+q)}
+  </div>`;
+}
+function closeMapChooser(){const ov=document.getElementById('overlay');ov.style.display='none';ov.innerHTML=''}
+function delItem(id){places=places.filter(p=>p.id!==id);refreshMarkers();closeDetail();toast('삭제됨');if(tab==='list')renderList()}
+
+/* ---------- share → AI 장소 추출 (async, 다중 후보) ---------- */
+function simShare(src){
+ if(src==='naver'){
+  const pl=NAVER_POOL[shareIdx.naver++%NAVER_POOL.length];
+  draft={source:src,place:pl};
+ }else{
+  const pool=VIDEO_POOLS[src];
+  const v=pool[shareIdx[src]++%pool.length];
+  draft={source:src,video:v};
+ }
+ renderSheet();
+}
+function renderSheet(){
+ const ov=document.getElementById('overlay');
+ if(!draft){ov.style.display='none';ov.innerHTML='';return}
+ const s=SRC[draft.source];
+ const head=`<div style="width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px"></div>
+   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <span style="font-size:14px;color:var(--text2);cursor:pointer" onclick="draft=null;renderSheet()">취소</span>
+    <span style="font-size:16px;font-weight:600">장소모아에 저장</span>
+    <span style="font-size:14px;visibility:hidden">취소</span></div>`;
+ let body;
+ if(draft.place){
+  const pl=draft.place;
+  body=`<div style="display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
+    ${thumbImg(pl,44,10)}
+    <div style="min-width:0"><p style="margin:0;font-size:15px;font-weight:600">${esc(pl.t)}</p>
+    <p style="margin:2px 0 0;font-size:13px;color:var(--text3)">${esc(pl.region)} · ${s.app}에서 공유됨 · 위치 확정</p></div></div>
+   <div style="display:flex;gap:9px;align-items:flex-start;background:var(--surface-strong);border-radius:var(--radius);padding:11px 12px;margin-bottom:12px">
+    <i class="ti ti-map-pin-filled" style="font-size:18px;color:var(--primary);flex-shrink:0"></i>
+    <p style="margin:0;font-size:13px;color:var(--body);line-height:1.45">지도 공유는 <b>위치가 확정</b>돼 있어 분석 없이 바로 저장돼요.</p></div>
+   <button class="pbtn" onclick="saveShare()">바로 저장</button>`;
+ }else{
+  body=`<div style="display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
+    <div style="width:44px;height:44px;border-radius:var(--radius);background:var(--surface-strong);display:flex;align-items:center;justify-content:center;font-size:22px">🎬</div>
+    <div style="min-width:0"><p style="margin:0;font-size:15px;font-weight:600">공유된 영상</p>
+    <p style="margin:2px 0 0;font-size:13px;color:var(--text3)">${s.app}에서 공유됨</p></div></div>
+   <div style="display:flex;gap:9px;align-items:flex-start;background:var(--surface-strong);border-radius:var(--radius);padding:11px 12px;margin-bottom:12px">
+    <i class="ti ti-sparkles" style="font-size:18px;color:var(--primary);flex-shrink:0"></i>
+    <p style="margin:0;font-size:13px;color:var(--body);line-height:1.45">저장하면 AI가 영상 속 <b>장소를 찾아</b>드려요. 여러 곳이면 저장할 곳을 골라요.</p></div>
+   <button class="pbtn" onclick="saveShare()">저장하고 장소 분석</button>`;
+ }
+ ov.style.display='block';
+ ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.5)" onclick="draft=null;renderSheet()"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px 20px">${head}${body}</div>`;
+}
+function saveShare(){
+ const d=draft;
+ if(d.place){
+  // 지도앱 공유: 분석 없이 즉시 저장
+  const c=d.place;
+  const np={id:nid++,source:d.source,title:c.t,cat:c.cat,region:c.region,lat:c.lat,lng:c.lng,memo:'',visits:0,verdict:null};
+  places.push(np);draft=null;renderSheet();
+  refreshMarkers();
+  toast(`'${c.t}' 저장됨 — 위치가 확정된 공유예요`);
+  go('map');
+  setTimeout(()=>{map.setView([np.lat,np.lng],16);const m=markersById[np.id];if(m)m.openPopup()},160);
+  return;
+ }
+ const pend={id:pid++,source:d.source,video:d.video,status:'analyzing'};
+ pendings.push(pend);draft=null;renderSheet();
+ toast('저장됨 — 분석이 끝나면 대기함에 올라와요');
+ if(tab==='inbox')renderInbox();
+ setTimeout(()=>resolvePending(pend.id),2200);
+}
+function resolvePending(id){
+ const pend=pendings.find(p=>p.id===id);if(!pend)return;
+ const pls=pend.video.places;
+ if(pls.length===1){
+  // 1곳이면 확인 없이 즉시 저장
+  const c=pls[0];
+  places.push({id:nid++,source:pend.source,title:c.t,cat:c.cat,region:c.region,lat:c.lat,lng:c.lng,memo:'',visits:0,verdict:null});
+  pendings=pendings.filter(x=>x.id!==id);
+  refreshMarkers();
+  toast(`'${c.t}' 저장됨 — 영상에서 1곳을 찾았어요`);
+ }else{
+  // 2곳 이상이면 대기 목록에 (전부 체크된 상태로)
+  pend.status='ready';
+  pend.candidates=pls.map(pl=>Object.assign({},pl,{checked:true,memo:''}));
+ }
+ if(tab==='list')renderList();
+ if(tab==='inbox')renderInbox();
+ renderTabs();
+}
+function renderInbox(){
+ document.getElementById('p-inbox').innerHTML=`
+  <div class="hdr">대기함</div>
+  ${pendings.length?pendRowsHtml():`<div class="empty" style="padding-top:70px"><div style="font-size:40px;margin-bottom:10px">✨</div>대기 중인 장소가 없어요<br><span style="font-size:12px;color:var(--text3)">릴스를 공유하면 AI가 찾은 장소가 여기 올라와요</span></div>`}`;
+}
+function pFind(pid){return pendings.find(x=>x.id===pid)}
+function pToggle(pid,i){const p=pFind(pid);if(!p)return;p.candidates[i].checked=!p.candidates[i].checked;renderInbox()}
+function pCycle(pid,i){const p=pFind(pid);if(!p)return;const c=p.candidates[i];let k=cats.findIndex(x=>x.id===c.cat);c.cat=cats[(k+1)%cats.length].id;renderInbox()}
+function pMemo(pid,i,v){const p=pFind(pid);if(p)p.candidates[i].memo=v}
+function pendAddAll(){
+ const ready=pendings.filter(p=>p.status==='ready');
+ const added=[];
+ ready.forEach(p=>p.candidates.filter(c=>c.checked).forEach(c=>{
+  const np={id:nid++,source:p.source,title:c.t,cat:c.cat,region:c.region,lat:c.lat,lng:c.lng,memo:(c.memo||'').trim(),visits:0,verdict:null};
+  places.push(np);added.push(np);
+ }));
+ pendings=pendings.filter(p=>p.status!=='ready');
+ renderTabs();
+ if(!added.length){renderInbox();return}
+ refreshMarkers();
+ toast(`${added.length}곳 저장됨 — 지도에 핀이 추가됐어요`);
+ go('map');
+ setTimeout(()=>{const b=L.latLngBounds(added.map(p=>[p.lat,p.lng]));map.fitBounds(b.pad(0.5),{maxZoom:16})},180);
+}
+
+/* ---------- navigation ---------- */
+function showPanel(t){['map','list','inbox','set'].forEach(x=>document.getElementById('p-'+x).classList.toggle('on',x===t))}
+function renderTabs(){
+ const rc=pendings.filter(p=>p.status==='ready').reduce((s,p)=>s+p.candidates.length,0);
+ document.getElementById('tabbar').innerHTML=
+ `<div class="tb ${tab==='map'?'tbon':''}" onclick="go('map')"><i class="ti ti-map-pin" style="font-size:20px"></i>지도</div>
+  <div class="tb ${tab==='list'?'tbon':''}" onclick="go('list')"><i class="ti ti-list" style="font-size:20px"></i>목록</div>
+  <div class="tb ${tab==='inbox'?'tbon':''}" onclick="go('inbox')"><i class="ti ti-inbox" style="font-size:20px"></i>대기함${rc?`<span class="tbadge">${rc}</span>`:''}</div>
+  <div class="tb ${tab==='set'?'tbon':''}" onclick="go('set')"><i class="ti ti-settings" style="font-size:20px"></i>설정</div>`;
+}
+function go(t){
+ tab=t;closeDetail();showPanel(t);
+ if(t==='list')renderList();else if(t==='set')renderSet();else if(t==='inbox')renderInbox();
+ if(t==='map'&&map)setTimeout(()=>map.invalidateSize(),60);
+ renderTabs();
+}
+
+/* ---------- boot ---------- */
+window.addEventListener('load',()=>{
+ initMap();
+ go('map');
+ setTimeout(()=>{map.invalidateSize();fitAll();},250);
+});
+</script>
+</body>
+</html>
