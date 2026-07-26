@@ -95,7 +95,12 @@ private struct WebView: UIViewRepresentable {
         webView.backgroundColor = UIColor(red: 0.97, green: 0.97, blue: 0.97, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
         webView.isOpaque = false
-        webView.load(URLRequest(url: resolvedURL()))
+
+        // 공유 익스텐션과 동일한 익명 계정(uid)으로 보이도록 쿠키 동기화 후 로드
+        let target = resolvedURL()
+        syncSharedIdentity(store: configuration.websiteDataStore.httpCookieStore) {
+            webView.load(URLRequest(url: target))
+        }
 
         context.coordinator.webView = webView
         context.coordinator.goBackObserver = NotificationCenter.default.addObserver(
@@ -132,6 +137,40 @@ private struct WebView: UIViewRepresentable {
             webView.load(URLRequest(url: resolvedURL()))
         } else {
             webView.reload()
+        }
+    }
+
+    // 웹 쿠키(moa_uid)와 App Group의 공유 uid를 일치시킨다.
+    // - 기존 웹 쿠키가 있으면 그 값을 App Group에 반영(기존 데이터 보존, 익스텐션이 동일 계정 사용)
+    // - 없으면 App Group uid(없으면 생성)를 쿠키로 심는다
+    private func syncSharedIdentity(store: WKHTTPCookieStore, completion: @escaping () -> Void) {
+        let group = UserDefaults(suiteName: "group.com.jihyun.placemoa")
+        let host = url.host ?? "place-moaa.vercel.app"
+
+        store.getAllCookies { cookies in
+            if let existing = cookies.first(where: { $0.name == "moa_uid" && !$0.value.isEmpty }) {
+                group?.set(existing.value, forKey: "moaUid")
+                group?.synchronize()
+                completion()
+                return
+            }
+
+            let uid = group?.string(forKey: "moaUid") ?? UUID().uuidString
+            group?.set(uid, forKey: "moaUid")
+            group?.synchronize()
+
+            let props: [HTTPCookiePropertyKey: Any] = [
+                .domain: host,
+                .path: "/",
+                .name: "moa_uid",
+                .value: uid,
+                .expires: Date(timeIntervalSinceNow: 60 * 60 * 24 * 365 * 2),
+            ]
+            if let cookie = HTTPCookie(properties: props) {
+                store.setCookie(cookie) { completion() }
+            } else {
+                completion()
+            }
         }
     }
 
