@@ -90,11 +90,15 @@ export async function ensureCats(uid: string): Promise<boolean> {
   return false;
 }
 
-// 신규 유저 온보딩용 데모 장소 (강남 3곳) — 빈 지도 대신 채워진 첫인상
+// 신규 유저 온보딩용 데모 장소 (강남 3곳) — 빈 지도 대신 채워진 첫인상.
+// 좌표=Kakao, 사진=네이버 대표사진(pstatic, /api/img 프록시로 렌더). 실제 지점명이라 리뷰·지도 링크도 정확.
 export const DEMO_PLACES = [
-  { title: '다운타우너 강남', category: '맛집', region: '서울 강남구', address: '서울 강남구 강남대로102길', lat: 37.5016, lng: 127.0244, memo: '수제버거 · 웨이팅 필수' },
-  { title: '노티드 강남', category: '카페', region: '서울 강남구', address: '서울 강남구 강남대로', lat: 37.5041, lng: 127.0251, memo: '도넛 · 크림라떼 시그니처' },
-  { title: '월향 강남', category: '술집·바', region: '서울 강남구', address: '서울 강남구 테헤란로', lat: 37.5005, lng: 127.0360, memo: '전통주 페어링' },
+  { title: '미미옥 강남신논현점', category: '맛집', region: '서울 강남구', address: '서울 강남구 봉은사로4길 24', lat: 37.5032855, lng: 127.0264392, memo: '들기름 막국수·수육',
+    photo: 'https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=https%3A%2F%2Fldb-phinf.pstatic.net%2F20240523_62%2F1716447442674lRemy_JPEG%2F%25B9%25CC%25B9%25CC%25BF%25C1_%25B0%25AD%25B3%25B2_%25BD%25C5%25B3%25ED%25C7%25F6%25C1%25A1_01.jpg' },
+  { title: '런던베이글뮤지엄 도산점', category: '카페', region: '서울 강남구', address: '서울 강남구 언주로168길 33', lat: 37.5260683, lng: 127.0364388, memo: '베이글·크림치즈 · 오픈런',
+    photo: 'https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=https%3A%2F%2Fldb-phinf.pstatic.net%2F20240619_136%2F1718755889599smMbU_JPEG%2FKakaoTalk_Photo_2024-06-19-09-10-18_002.jpeg' },
+  { title: '르챔버', category: '술집·바', region: '서울 강남구', address: '서울 강남구 도산대로55길 42', lat: 37.5262560, lng: 127.0411281, memo: '위스키·클래식 칵테일 바',
+    photo: 'https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=https%3A%2F%2Fldb-phinf.pstatic.net%2F20210329_76%2F1617013862048wy7MB_PNG%2F9.PNG' },
 ];
 
 // 데모 장소 시드 — 장소가 하나도 없을 때만 (기존/삭제 유저 재시드 방지)
@@ -106,7 +110,7 @@ export async function seedDemoPlaces(uid: string) {
     const cat_id = await catIdByName(uid, p.category);
     await d.execute({
       sql: 'INSERT INTO places (uid,title,cat_id,region,address,photo,lat,lng,source,source_url,memo) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      args: [uid, p.title, cat_id, p.region, p.address, '', p.lat, p.lng, 'demo', null, p.memo],
+      args: [uid, p.title, cat_id, p.region, p.address, p.photo, p.lat, p.lng, 'demo', null, p.memo],
     });
   }
 }
