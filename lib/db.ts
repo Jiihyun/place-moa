@@ -44,12 +44,26 @@ export async function db(): Promise<Client> {
         id TEXT PRIMARY KEY, uid TEXT NOT NULL,
         title TEXT NOT NULL DEFAULT '', sender TEXT NOT NULL DEFAULT '',
         place_ids TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+      `CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid TEXT NOT NULL DEFAULT 'anon', name TEXT NOT NULL,
+        props TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+      `CREATE TABLE IF NOT EXISTS waitlist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL, uid TEXT NOT NULL DEFAULT 'anon',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
       `CREATE INDEX IF NOT EXISTS idx_places_uid ON places(uid)`,
       `CREATE INDEX IF NOT EXISTS idx_pendings_uid ON pendings(uid)`,
+      `CREATE INDEX IF NOT EXISTS idx_events_name ON events(name)`,
     ], 'write');
     // 기존 DB 마이그레이션: address 컬럼 추가 (이미 있으면 무시)
     try { await client.execute("ALTER TABLE places ADD COLUMN address TEXT NOT NULL DEFAULT ''"); } catch {}
     try { await client.execute("ALTER TABLE places ADD COLUMN photo TEXT NOT NULL DEFAULT ''"); } catch {}
+    // 검증용 waitlist 마이그레이션: 플랫폼·유형·닉네임 컬럼
+    try { await client.execute("ALTER TABLE waitlist ADD COLUMN platform TEXT NOT NULL DEFAULT 'unknown'"); } catch {}
+    try { await client.execute("ALTER TABLE waitlist ADD COLUMN persona TEXT NOT NULL DEFAULT ''"); } catch {}
+    try { await client.execute("ALTER TABLE waitlist ADD COLUMN nickname TEXT NOT NULL DEFAULT ''"); } catch {}
     })();
   }
   await _ready;
@@ -84,4 +98,15 @@ export async function catIdByName(uid: string, name: string): Promise<number | n
 
 export function rowsOf(r: { rows: any[] }): any[] {
   return r.rows.map(row => ({ ...row }));
+}
+
+// 검증용 이벤트 로깅 (fire-and-forget — 실패해도 앱 흐름을 막지 않음)
+export async function track(uid: string, name: string, props: Record<string, any> = {}) {
+  try {
+    const d = await db();
+    await d.execute({
+      sql: 'INSERT INTO events (uid,name,props) VALUES (?,?,?)',
+      args: [uid || 'anon', name, JSON.stringify(props)],
+    });
+  } catch { /* 로깅 실패는 무시 */ }
 }

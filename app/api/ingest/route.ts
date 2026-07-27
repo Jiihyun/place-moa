@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, catIdByName, rowsOf } from '@/lib/db';
+import { db, catIdByName, rowsOf, track } from '@/lib/db';
 import { getUid } from '@/lib/user';
 import { fetchMeta } from '@/lib/meta';
 import { extractPlaces } from '@/lib/gemini';
@@ -12,14 +12,17 @@ export async function POST(req: Request) {
   const userMemo = (memo || '').trim();
   if (!url || typeof url !== 'string') return NextResponse.json({ error: '링크를 입력해 주세요' }, { status: 400 });
 
+  await track(uid, 'save_attempt', { hasCaption: !!caption });
   const meta = await fetchMeta(url, caption);
   let extracted;
   try {
     extracted = await extractPlaces(meta.title, meta.text);
   } catch (e: any) {
+    await track(uid, 'save_fail', { reason: 'ai_error' });
     return NextResponse.json({ error: `AI 분석 실패: ${e.message}` }, { status: 502 });
   }
   if (extracted.places.length === 0) {
+    await track(uid, 'save_fail', { reason: 'no_place', source: meta.source });
     return NextResponse.json({ error: '이 링크에서 장소를 찾지 못했어요. 캡션을 함께 붙여넣어 보세요.' }, { status: 422 });
   }
 
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
       args: [uid, c.name, c.cat_id, c.region, c.address, c.photo, c.lat, c.lng, meta.source, url, userMemo],
     });
     const r = await d.execute({ sql: 'SELECT * FROM places WHERE id=?', args: [Number(info.lastInsertRowid)] });
+    await track(uid, 'save_success', { source: meta.source, count: 1 });
     return NextResponse.json({ saved: rowsOf(r)[0], usedAI: extracted.usedAI });
   }
 
@@ -51,5 +55,6 @@ export async function POST(req: Request) {
     args: [uid, meta.title, meta.source, url, JSON.stringify(enriched)],
   });
   const r = await d.execute({ sql: 'SELECT * FROM pendings WHERE id=?', args: [Number(info.lastInsertRowid)] });
+  await track(uid, 'save_pending', { source: meta.source, count: enriched.length });
   return NextResponse.json({ pending: { ...rowsOf(r)[0], candidates: enriched }, usedAI: extracted.usedAI });
 }

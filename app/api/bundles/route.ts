@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, track } from '@/lib/db';
 import { getUid } from '@/lib/user';
 
 export async function POST(req: Request) {
@@ -13,5 +13,6 @@ export async function POST(req: Request) {
     sql: 'INSERT INTO bundles (id,uid,title,sender,place_ids) VALUES (?,?,?,?,?)',
     args: [id, uid, (title || '').slice(0, 60), (sender || '').slice(0, 30), JSON.stringify(placeIds)],
   });
+  await track(uid, 'bundle_created', { count: placeIds.length });
   return NextResponse.json({ id, url: `/s/${id}` });
 }

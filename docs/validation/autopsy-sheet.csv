@@ -1,0 +1,16 @@
+participant,wedge_flag,item_no,item_name,track,remembered,revisited_count,visited,still_want,findable_now,note
+# wedge_flag: 던지는 저장은 하지만 네이버/카카오 지도 북마크는 안 씀 = Y (참가자당 한 번만 채우면 됨),,,,,,,,,,
+# track: dm(나에게 보내기) / save(인스타 저장폴더) / capture(캡쳐) / other,,,,,,,,,,
+# remembered: 저장한 것 자체를 기억했나 Y/N  | visited: 실제로 갔나 Y/N,,,,,,,,,,
+# still_want: 지금 봐도 아직 가고 싶나 Y/N (=놓친 기회)  | findable_now: 지금 이름/위치 바로 찾나 Y/N,,,,,,,,,,
+P1,Y,1,예)성수 OO카페,dm,N,0,N,Y,N,저장한 줄도 몰랐음
+P1,Y,2,예)망원 OO밥집,capture,N,1,N,N,N,사진첩에 묻힘
+P1,,3,,,,,,,,
+P1,,4,,,,,,,,
+P1,,5,,,,,,,,
+P2,,1,,,,,,,,
+P2,,2,,,,,,,,
+P2,,3,,,,,,,,
+P3,,1,,,,,,,,
+P3,,2,,,,,,,,
+P3,,3,,,,,,,,
