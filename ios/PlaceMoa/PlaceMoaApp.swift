@@ -47,7 +47,7 @@ enum AppConfig {
     static var webURL: URL {
         var components = URLComponents()
         components.scheme = bundleValue("PlaceMoaWebScheme", fallback: "https")
-        components.host = bundleValue("PlaceMoaWebHost", fallback: "place-moaa.vercel.app")
+        components.host = bundleValue("PlaceMoaWebHost", fallback: "place-moa-kr.vercel.app")
         components.path = bundleValue("PlaceMoaWebPath", fallback: "")
 
         if let port = Int(bundleValue("PlaceMoaWebPort", fallback: "")) {

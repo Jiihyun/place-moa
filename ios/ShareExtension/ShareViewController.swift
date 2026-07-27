@@ -6,7 +6,7 @@ final class ShareViewController: UIViewController {
     private let spinner = UIActivityIndicatorView(style: .medium)
 
     // 웹 서비스 호스트 (메인 앱과 동일). 공유 익스텐션은 여기로 직접 분석 요청을 보낸다.
-    private let ingestEndpoint = URL(string: "https://place-moaa.vercel.app/api/ingest")!
+    private let ingestEndpoint = URL(string: "https://place-moa-kr.vercel.app/api/ingest")!
     private let appGroup = "group.com.jihyun.placemoa"
 
     override func viewDidLoad() {

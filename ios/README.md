@@ -4,13 +4,13 @@
 
 ## 웹 주소 변경
 
-기본 주소는 `https://place-moaa.vercel.app`입니다.
+기본 주소는 `https://place-moa-kr.vercel.app`입니다.
 
 주소를 바꾸려면 `PlaceMoa/Config.xcconfig`를 수정하세요.
 
 ```xcconfig
 PLACE_MOA_WEB_SCHEME = https
-PLACE_MOA_WEB_HOST = place-moaa.vercel.app
+PLACE_MOA_WEB_HOST = place-moa-kr.vercel.app
 PLACE_MOA_WEB_PORT =
 PLACE_MOA_WEB_PATH =
 ```
