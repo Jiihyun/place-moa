@@ -32,10 +32,17 @@ export default async function Admin() {
     } catch { /* skip */ }
   }
 
-  const started = cnt['quiz_start'] || 0;
-  const completed = cnt['quiz_complete'] || 0;
+  const g = (k: string) => cnt[k] || 0;
+  const started = g('quiz_start');
+  const completed = g('quiz_complete');
   const iosN = signups.filter(s => s.platform === 'ios').length;
   const aosN = signups.filter(s => s.platform === 'android').length;
+
+  // 앱 사용 퍼널 / 전환 (/api/stats 와 동일 계산)
+  const saveAttempt = g('save_attempt');
+  const saveSuccess = g('save_success') + g('save_pending');
+  const saveConv = saveAttempt ? Math.round((saveSuccess / saveAttempt) * 100) + '%' : '–';
+  const completionRate = started ? Math.round((completed / started) * 100) + '%' : '–';
 
   const wrap: React.CSSProperties = { maxWidth: 760, margin: '0 auto', padding: '32px 20px 80px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#222', lineHeight: 1.5 };
   const card: React.CSSProperties = { background: '#f7f7f7', borderRadius: 14, padding: '16px 18px', flex: 1, minWidth: 120 };
@@ -47,11 +54,28 @@ export default async function Admin() {
       <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>장소모아 · 수요조사 대시보드</h1>
       <p style={{ color: '#999', fontSize: 13, margin: '0 0 22px' }}>이 페이지는 링크를 아는 사람만 접근 가능해요. 새로고침하면 최신.</p>
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 26 }}>
+      <h2 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 10px', color: '#666' }}>퀴즈 · 신청</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
         <div style={card}><div style={{ fontSize: 12, color: '#888' }}>퀴즈 시작</div><div style={{ fontSize: 26, fontWeight: 800 }}>{started}</div></div>
-        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>퀴즈 완료</div><div style={{ fontSize: 26, fontWeight: 800 }}>{completed}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>퀴즈 완료</div><div style={{ fontSize: 26, fontWeight: 800 }}>{completed}</div><div style={{ fontSize: 11, color: '#aaa' }}>완료율 {completionRate}</div></div>
         <div style={card}><div style={{ fontSize: 12, color: '#888' }}>iOS 신청</div><div style={{ fontSize: 26, fontWeight: 800 }}>{iosN}</div></div>
         <div style={card}><div style={{ fontSize: 12, color: '#888' }}>안드 신청</div><div style={{ fontSize: 26, fontWeight: 800 }}>{aosN}</div></div>
+      </div>
+
+      <h2 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 10px', color: '#666' }}>결과 화면 CTA 클릭</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>🌐 웹 체험</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('cta_web')}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>🍎 iOS 베타</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('cta_ios')}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>🤖 안드 알림</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('cta_android')}</div></div>
+      </div>
+
+      <h2 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 10px', color: '#666' }}>앱 사용 퍼널 (웹 체험 이후)</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 26 }}>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>방문</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('visit')}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>저장 시도</div><div style={{ fontSize: 26, fontWeight: 800 }}>{saveAttempt}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>저장 성공</div><div style={{ fontSize: 26, fontWeight: 800 }}>{saveSuccess}</div><div style={{ fontSize: 11, color: '#aaa' }}>전환 {saveConv}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>공유 생성</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('bundle_created')}</div></div>
+        <div style={card}><div style={{ fontSize: 12, color: '#888' }}>저장 실패</div><div style={{ fontSize: 26, fontWeight: 800 }}>{g('save_fail')}</div></div>
       </div>
 
       <h2 style={{ fontSize: 17, fontWeight: 800, margin: '0 0 10px' }}>신청 명단 ({signups.length})</h2>

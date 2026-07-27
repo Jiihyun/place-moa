@@ -419,7 +419,6 @@ export default function App() {
             setCats((await r.json()).cats);
           }} />
           <p style={{ padding: '4px 16px', fontSize: 11, color: 'var(--text3)' }}>새 카테고리는 회색 📍 핀으로 표시돼요.</p>
-          <BookmarkletCard onToast={toast} />
         </div>
 
         {/* DETAIL */}
@@ -589,35 +588,6 @@ export default function App() {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function BookmarkletCard({ onToast }: { onToast: (m: string) => void }) {
-  const [origin, setOrigin] = useState('');
-  const ref = useRef<HTMLAnchorElement>(null);
-  useEffect(() => { setOrigin(location.origin); }, []);
-  const code = origin
-    ? `javascript:(function(){var d=document,c='',m=d.querySelector('meta[property="og:description"]');if(m)c=m.content;if(!c){var a=d.querySelector('article');if(a)c=a.innerText;}if(!c)c=d.title;window.open('${origin}/add?url='+encodeURIComponent(location.href)+'&caption='+encodeURIComponent(c.slice(0,1500)),'moa','width=440,height=700');})();`
-    : '';
-  useEffect(() => { if (ref.current && code) ref.current.setAttribute('href', code); }, [code]);
-  return (
-    <div style={{ margin: '18px 16px 30px', padding: '16px', border: '1px solid var(--border)', borderRadius: 14, background: 'var(--surface2)' }}>
-      <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700 }}>💻 노트북에서 원클릭 저장</p>
-      <p style={{ margin: '0 0 12px', fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.5 }}>
-        웹 인스타그램·유튜브 보다가 아래 버튼 한 번으로 저장하세요. 복붙이 필요 없어요.
-      </p>
-      <a ref={ref} className="bm" draggable onClick={e => { e.preventDefault(); onToast('이 버튼을 북마크바로 "드래그"하세요'); }}>
-        📍 장소모아에 저장
-      </a>
-      <ol style={{ margin: '14px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--body)', lineHeight: 1.7 }}>
-        <li>북마크바 켜기 (크롬: <b>⌘⇧B</b>)</li>
-        <li>위 <b>📍 장소모아에 저장</b> 버튼을 북마크바로 <b>드래그</b></li>
-        <li>인스타에서 릴스 보다가 그 북마크 클릭 → 장소가 대기함에 쌓여요</li>
-      </ol>
-      <button style={{ marginTop: 12, fontSize: 12 }} onClick={() => { navigator.clipboard.writeText(code); onToast('북마클릿 코드 복사됨'); }}>
-        <i className="ti ti-copy" style={{ fontSize: 13, verticalAlign: '-2px' }} /> 코드 복사 (수동 등록용)
-      </button>
     </div>
   );
 }
