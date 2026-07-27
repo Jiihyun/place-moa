@@ -77,13 +77,37 @@ export const DEFAULT_CATS = [
   { name: '기타', color: '#8a8a86', emoji: '📍' },
 ];
 
-export async function ensureCats(uid: string) {
+// 최초 생성이면 true 반환 (신규 유저 판별용 — 데모 장소 시드에 사용)
+export async function ensureCats(uid: string): Promise<boolean> {
   const d = await db();
   const n = await d.execute({ sql: 'SELECT COUNT(*) c FROM categories WHERE uid=?', args: [uid] });
   if (Number(n.rows[0].c) === 0) {
     for (const c of DEFAULT_CATS) {
       await d.execute({ sql: 'INSERT INTO categories (uid,name,color,emoji) VALUES (?,?,?,?)', args: [uid, c.name, c.color, c.emoji] });
     }
+    return true;
+  }
+  return false;
+}
+
+// 신규 유저 온보딩용 데모 장소 (강남 3곳) — 빈 지도 대신 채워진 첫인상
+export const DEMO_PLACES = [
+  { title: '다운타우너 강남', category: '맛집', region: '서울 강남구', address: '서울 강남구 강남대로102길', lat: 37.5016, lng: 127.0244, memo: '수제버거 · 웨이팅 필수' },
+  { title: '노티드 강남', category: '카페', region: '서울 강남구', address: '서울 강남구 강남대로', lat: 37.5041, lng: 127.0251, memo: '도넛 · 크림라떼 시그니처' },
+  { title: '월향 강남', category: '술집·바', region: '서울 강남구', address: '서울 강남구 테헤란로', lat: 37.5005, lng: 127.0360, memo: '전통주 페어링' },
+];
+
+// 데모 장소 시드 — 장소가 하나도 없을 때만 (기존/삭제 유저 재시드 방지)
+export async function seedDemoPlaces(uid: string) {
+  const d = await db();
+  const existing = await d.execute({ sql: 'SELECT COUNT(*) c FROM places WHERE uid=?', args: [uid] });
+  if (Number(existing.rows[0].c) > 0) return;
+  for (const p of DEMO_PLACES) {
+    const cat_id = await catIdByName(uid, p.category);
+    await d.execute({
+      sql: 'INSERT INTO places (uid,title,cat_id,region,address,photo,lat,lng,source,source_url,memo) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      args: [uid, p.title, cat_id, p.region, p.address, '', p.lat, p.lng, 'demo', null, p.memo],
+    });
   }
 }
 
