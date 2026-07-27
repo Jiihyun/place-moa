@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 
 const C = '#ff385c';
 const TESTFLIGHT = process.env.NEXT_PUBLIC_TESTFLIGHT_URL || '';
-const WEB_APP = 'https://place-moaa.vercel.app';
+// 퀴즈와 웹앱은 같은 배포 — 상대경로로 두면 항상 현재 라이브 도메인으로 이동(도메인 하드코딩 불필요)
+const WEB_APP = '/';
 
 function track(name: string, props: Record<string, any> = {}) {
   fetch('/api/track', {
