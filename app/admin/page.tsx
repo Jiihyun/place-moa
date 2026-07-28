@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { tallyQuizAnswers } from '@/lib/quiz';
 
 export const dynamic = 'force-dynamic'; // 항상 최신 데이터
 
@@ -31,6 +32,9 @@ export default async function Admin() {
       if (p.others) for (const k of Object.keys(p.others)) { const v = p.others[k]; if (v && String(v).trim()) others.push(String(v).trim()); }
     } catch { /* skip */ }
   }
+
+  // 문항별 보기 선택 수 (최근 500건 quiz_complete 기준)
+  const questions = tallyQuizAnswers(qc.map(r => String(r.props)));
 
   const g = (k: string) => cnt[k] || 0;
   const started = g('quiz_start');
@@ -102,6 +106,28 @@ export default async function Admin() {
           Object.entries(personaCount).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f2f2f2' }}>
               <span>{PERSONA[k] || k}</span><b>{n}명</b>
+            </div>
+          ))}
+      </div>
+
+      <h2 style={{ fontSize: 17, fontWeight: 800, margin: '0 0 10px' }}>문항별 답변 분포 (최근 {qc.length}건)</h2>
+      <div style={{ marginBottom: 30 }}>
+        {questions.every(q => q.total === 0) ? <p style={{ color: '#aaa' }}>아직 없음</p> :
+          questions.map((q, qi) => (
+            <div key={qi} style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px' }}>Q{qi + 1}. {q.q} <span style={{ color: '#aaa', fontWeight: 500 }}>({q.total}명 응답)</span></p>
+              {[...q.opts, { label: '기타 (직접 입력)', count: q.other }].map((o, oi) => {
+                const p = q.total ? Math.round((o.count / q.total) * 100) : 0;
+                return (
+                  <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '3px 0' }}>
+                    <span style={{ flex: 1, fontSize: 13.5, color: '#333' }}>{o.label}</span>
+                    <div style={{ width: 140, height: 8, background: '#eee', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${p}%`, height: '100%', background: '#ff385c' }} />
+                    </div>
+                    <span style={{ width: 66, textAlign: 'right', fontSize: 13, color: '#666' }}><b>{o.count}</b> · {p}%</span>
+                  </div>
+                );
+              })}
             </div>
           ))}
       </div>

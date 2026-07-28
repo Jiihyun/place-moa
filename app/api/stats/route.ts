@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { tallyQuizAnswers } from '@/lib/quiz';
 
 // 검증용 집계 — 제출 데크 숫자 소스. 공개 라우트지만 개인정보 없음(이메일 수만 카운트).
 export async function GET() {
@@ -32,6 +33,8 @@ export async function GET() {
       if (p.others) for (const k of Object.keys(p.others)) { const v = p.others[k]; if (v && String(v).trim()) quizOthers.push(String(v).trim()); }
     } catch { /* skip */ }
   }
+  // 문항별 보기 선택 수 (최근 300건 기준)
+  const quizQuestions = tallyQuizAnswers(qc.rows.map(r => String(r.props)));
 
   return NextResponse.json({
     quiz_funnel: {
@@ -42,6 +45,7 @@ export async function GET() {
       cta_ios: g('cta_ios'),
       cta_android: g('cta_android'),
       others: quizOthers,
+      questions: quizQuestions,
     },
     app_funnel: {
       visits: g('visit'),
