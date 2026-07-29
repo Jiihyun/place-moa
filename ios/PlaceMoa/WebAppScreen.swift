@@ -96,11 +96,10 @@ private struct WebView: UIViewRepresentable {
         webView.scrollView.backgroundColor = webView.backgroundColor
         webView.isOpaque = false
 
-        // 공유 익스텐션과 동일한 익명 계정(uid)으로 보이도록 쿠키 동기화 후 로드
-        let target = resolvedURL()
-        syncSharedIdentity(store: configuration.websiteDataStore.httpCookieStore) {
-            webView.load(URLRequest(url: target))
-        }
+        // 공유 익스텐션과 동일한 익명 계정(uid)으로 로드. resolvedURL()이 ?u=<IDFV>를
+        // 실어 보내면 서버(미들웨어)가 moa_uid 쿠키를 확정한다 — WKWebView 쿠키스토어
+        // 타이밍에 의존하던 방식이 랜덤 계정으로 갈리던 문제를 없앤다.
+        webView.load(URLRequest(url: resolvedURL()))
 
         context.coordinator.webView = webView
         context.coordinator.goBackObserver = NotificationCenter.default.addObserver(
@@ -148,40 +147,24 @@ private struct WebView: UIViewRepresentable {
         }
     }
 
-    // 웹 moa_uid 쿠키를 공유 익스텐션과 동일한 uid(identifierForVendor 기반)로 강제한다.
-    // identifierForVendor는 같은 벤더의 앱·익스텐션이 동일 값을 가지므로 App Group
-    // 프로비저닝 없이도 저장 계정이 일치한다. 미들웨어가 다른 uid를 심는 것도 차단.
-    private func syncSharedIdentity(store: WKHTTPCookieStore, completion: @escaping () -> Void) {
-        let host = url.host ?? "place-moaa.vercel.app"
-        let uid = UIDevice.current.identifierForVendor?.uuidString ?? "moa-shared-fallback"
-
-        store.getAllCookies { cookies in
-            if cookies.contains(where: { $0.name == "moa_uid" && $0.value == uid }) {
-                completion()
-                return
-            }
-            let props: [HTTPCookiePropertyKey: Any] = [
-                .domain: host,
-                .path: "/",
-                .name: "moa_uid",
-                .value: uid,
-                .expires: Date(timeIntervalSinceNow: 60 * 60 * 24 * 365 * 2),
-            ]
-            if let cookie = HTTPCookie(properties: props) {
-                store.setCookie(cookie) { completion() }
-            } else {
-                completion()
-            }
-        }
+    // 익명 계정 uid. 공유 익스텐션과 동일하게 identifierForVendor를 쓴다
+    // (같은 벤더의 앱·익스텐션이 동일 값 → 저장 계정 일치).
+    private func sharedUid() -> String {
+        UIDevice.current.identifierForVendor?.uuidString ?? "moa-shared-fallback"
     }
 
+    // 로드 URL에 항상 ?u=<uid>를 실어 서버가 moa_uid 쿠키를 확정하게 한다.
+    // (WKWebView 쿠키스토어 타이밍에 의존하지 않는 확실한 계정 동기화)
     private func resolvedURL() -> URL {
-        guard let sharedURL else { return url }
-
-        // 공유된 링크는 /add 페이지로 보내 웹에서 자동으로 AI 분석 → 장소 추가
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.path = "/add"
-        components?.queryItems = [URLQueryItem(name: "url", value: sharedURL.absoluteString)]
+        var items = [URLQueryItem(name: "u", value: sharedUid())]
+
+        if let sharedURL {
+            // 공유된 링크는 /add 페이지로 보내 웹에서 자동으로 AI 분석 → 장소 추가
+            components?.path = "/add"
+            items.append(URLQueryItem(name: "url", value: sharedURL.absoluteString))
+        }
+        components?.queryItems = items
 
         return components?.url ?? url
     }
