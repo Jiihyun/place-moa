@@ -50,7 +50,13 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
               : <div style={{ width: 46, height: 46, borderRadius: 10, background: `${p.cat_color || '#8a8a86'}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{p.cat_emoji || '📍'}</div>}
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#222' }}>{p.title}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6a6a6a' }}>{p.cat_name || '미분류'} · {p.region}{p.source_url ? <> · <a href={p.source_url} target="_blank" style={{ color: '#6a6a6a' }}>{SRC_APP[p.source] || '원본'} 바로가기 ›</a></> : ''} · <a href={naverPlaceUrl(p.title, p.region)} target="_blank" style={{ color: '#03c75a', fontWeight: 600 }}>네이버 플레이스 ›</a></p>
+              <p style={{ margin: '3px 0 7px', fontSize: 12, color: '#6a6a6a' }}>{p.cat_name || '미분류'} · {p.region}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {p.source_url && (
+                  <a href={p.source_url} target="_blank" style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, color: '#fff', background: '#e1306c', borderRadius: 999, padding: '4px 10px', textDecoration: 'none' }}>{SRC_APP[p.source] || '원본'} 바로가기 ›</a>
+                )}
+                <a href={naverPlaceUrl(p.title, p.region)} target="_blank" style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, color: '#fff', background: '#03c75a', borderRadius: 999, padding: '4px 10px', textDecoration: 'none' }}>네이버 플레이스 바로가기 ›</a>
+              </div>
             </div>
           </div>
         ))}
