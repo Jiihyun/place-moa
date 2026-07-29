@@ -21,6 +21,16 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
   const sender = b.sender || '친구';
   const SRC_APP: Record<string, string> = { instagram: '인스타그램', youtube: '유튜브', naver: '네이버', other: '원본' };
 
+  // 네이버 플레이스: 이름 + 구/동 정도로만 검색해야 해당 장소가 바로 뜸 (도로명주소까지 넣으면 결과 0)
+  const naverPlaceUrl = (name: string, region: string) => {
+    const shortArea = (region || '')
+      .replace(/^서울(특별시)?\s*/, '')
+      .split(' ')
+      .find((t: string) => /(구|동|읍|면)$/.test(t)) || '';
+    const q = encodeURIComponent(`${name} ${shortArea}`.trim());
+    return `https://m.place.naver.com/place/list?query=${q}`;
+  };
+
   return (
     <div style={{ maxWidth: 520, margin: '0 auto', minHeight: '100dvh', background: '#1c1b1a', padding: '30px 18px 28px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -40,7 +50,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
               : <div style={{ width: 46, height: 46, borderRadius: 10, background: `${p.cat_color || '#8a8a86'}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{p.cat_emoji || '📍'}</div>}
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#222' }}>{p.title}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6a6a6a' }}>{p.cat_name || '미분류'} · {p.region}{p.source_url ? <> · <a href={p.source_url} target="_blank" style={{ color: '#6a6a6a' }}>{SRC_APP[p.source] || '원본'} 바로가기 ›</a></> : ''}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6a6a6a' }}>{p.cat_name || '미분류'} · {p.region}{p.source_url ? <> · <a href={p.source_url} target="_blank" style={{ color: '#6a6a6a' }}>{SRC_APP[p.source] || '원본'} 바로가기 ›</a></> : ''} · <a href={naverPlaceUrl(p.title, p.region)} target="_blank" style={{ color: '#03c75a', fontWeight: 600 }}>네이버 플레이스 ›</a></p>
             </div>
           </div>
         ))}
